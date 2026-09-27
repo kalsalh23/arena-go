@@ -1,0 +1,324 @@
+import { useState } from 'react'
+import { useParams, Link } from 'react-router-dom'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import Layout from '../../components/Layout'
+import { Spinner, Empty, ErrorBox, OkBox } from '../../components/ui'
+import { supabase } from '../../lib/supabase'
+import { dateAr, timeAr, roundName, TOURNAMENT_TYPE_LABELS } from '../../lib/constants'
+import { statusBadge } from '../tournaments/TournamentsPage'
+import { MatchCard } from '../tournaments/TournamentDetailPage'
+
+export default function ManageTournamentPage() {
+  const { id } = useParams()
+  const qc = useQueryClient()
+  const [err, setErr] = useState('')
+  const [ok, setOk] = useState('')
+
+  const tournament = useQuery({
+    queryKey: ['tournament', id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('tournaments')
+        .select('*, venue:venues(name), village:villages(name)')
+        .eq('id', id)
+        .maybeSingle()
+      if (error) throw error
+      return data
+    },
+  })
+
+  const ttRows = useQuery({
+    queryKey: ['tournament-teams', id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('tournament_teams')
+        .select('*, team:teams(id, name, logo_url)')
+        .eq('tournament_id', id)
+        .order('joined_at')
+      if (error) throw error
+      return data
+    },
+  })
+
+  const act = useMutation({
+    mutationFn: async ({ fn, args }) => {
+      const { error } = await supabase.rpc(fn, args)
+      if (error) throw new Error(error.message)
+    },
+    onSuccess: (_d, vars) => {
+      setErr('')
+      setOk(vars.msg || 'تم التنفيذ بنجاح')
+      qc.invalidateQueries({ queryKey: ['tournament', id] })
+      qc.invalidateQueries({ queryKey: ['tournament-teams', id] })
+      qc.invalidateQueries({ queryKey: ['tournament-matches', id] })
+      qc.invalidateQueries({ queryKey: ['tournament-standings', id] })
+      qc.invalidateQueries({ queryKey: ['my-tournaments'] })
+    },
+    onError: (e) => { setOk(''); setErr(e.message) },
+  })
+
+  if (tournament.isLoading) return <Layout title="إدارة البطولة"><Spinner /></Layout>
+  if (!tournament.data) return <Layout title="إدارة البطولة"><Empty icon="🏆" text="البطولة غير موجودة" /></Layout>
+  const t = tournament.data
+  const approved = ttRows.data?.filter((r) => r.status === 'approved') || []
+  const pending = ttRows.data?.filter((r) => r.status === 'pending') || []
+
+  return (
+    <Layout title={`إدارة: ${t.name}`}>
+      <ErrorBox>{err}</ErrorBox>
+      <OkBox>{ok}</OkBox>
+
+      <div className="card">
+        <div className="row between">
+          <div className="card-title">{t.name}</div>
+          {statusBadge(t.status)}
+        </div>
+        <div className="tiny">🏟️ {t.venue?.name} • {TOURNAMENT_TYPE_LABELS[t.tournament_type]} • الفرق: {approved.length}/{t.max_teams}</div>
+        {t.status === 'rejected' && t.rejection_reason && <div className="tiny" style={{ color: 'var(--danger)' }}>سبب الرفض: {t.rejection_reason}</div>}
+        {t.status === 'pending_admin_approval' && (
+          <div className="mt8"><span className="badge warn">⏳ بانتظار موافقة مدير Arena Go — لن تظهر للاعبين قبل الموافقة</span></div>
+        )}
+
+        {t.status === 'full' && (
+          <div className="mt8 center">
+            <p className="muted">اكتمل عدد الفرق — القرعة عشوائية تماماً ولا يمكنك اختيار المواجهات.</p>
+            <button
+              className="btn block"
+              onClick={() => act.mutate({ fn: 'run_tournament_draw', args: { p_tournament_id: id }, msg: 'تم إجراء القرعة وإنشاء المباريات 🎲' })}
+              disabled={act.isPending}
+            >
+              🎲 ابدأ القرعة الآن
+            </button>
+          </div>
+        )}
+        {t.status === 'draw_completed' && (
+          <div className="mt8">
+            <button
+              className="btn block"
+              onClick={() => act.mutate({ fn: 'start_tournament', args: { p_tournament_id: id }, msg: 'انطلقت البطولة ⚽' })}
+              disabled={act.isPending}
+            >
+              ▶️ انطلق بالبطولة
+            </button>
+            <div className="hint center">حدد مواعيد المباريات من القائمة أدناه لتصلك إشعارات اللاعبين.</div>
+          </div>
+        )}
+        {t.tournament_type === 'groups_knockout' && t.status === 'ongoing' && (
+          <div className="mt8">
+            <button
+              className="btn block"
+              onClick={() => act.mutate({ fn: 'create_knockout_from_groups', args: { p_tournament_id: id }, msg: 'أُنشئت مواجهات خروج المغلوب 🔥' })}
+              disabled={act.isPending}
+            >
+              🥊 إنشاء دور خروج المغلوب (المتأهلون)
+            </button>
+          </div>
+        )}
+      </div>
+
+      {pending.length > 0 && t.status === 'registration_open' && (
+        <div className="section" style={{ marginTop: 0 }}>
+          <div className="section-head"><h2>📨 طلبات المشاركة ({pending.length})</h2></div>
+          <div className="card">
+            {pending.map((r) => (
+              <div key={r.id} className="list-item">
+                <div className="logo-box">{r.team?.logo_url ? <img src={r.team.logo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : '⚽'}</div>
+                <div style={{ flex: 1 }}>
+                  <b>{r.team?.name}</b>
+                  <div className="tiny">انضم بتاريخ {dateAr(r.joined_at?.slice(0, 10))}</div>
+                </div>
+                <div className="row">
+                  <button className="btn sm success" onClick={() => act.mutate({ fn: 'review_tournament_team', args: { p_tt_id: r.id, p_decision: 'approved' }, msg: 'تم القبول' })}>قبول</button>
+                  <button className="btn sm danger" onClick={() => act.mutate({ fn: 'review_tournament_team', args: { p_tt_id: r.id, p_decision: 'rejected' }, msg: 'تم الرفض' })}>رفض</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="section">
+        <div className="section-head"><h2>📅 المباريات</h2><Link className="see-all" to={`/tournaments/${id}`}>عرض عام ›</Link></div>
+        <MatchesManager t={t} />
+      </div>
+    </Layout>
+  )
+}
+
+function MatchesManager({ t }) {
+  const qc = useQueryClient()
+  const [err, setErr] = useState('')
+  const [openResult, setOpenResult] = useState(null)
+  const [openSchedule, setOpenSchedule] = useState(null)
+
+  const matches = useQuery({
+    queryKey: ['tournament-matches', t.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('tournament_matches')
+        .select(`
+          *, group:tournament_groups(name),
+          home:teams!tournament_matches_home_team_id_fkey(id, name),
+          away:teams!tournament_matches_away_team_id_fkey(id, name)
+        `)
+        .eq('tournament_id', t.id)
+        .order('round')
+        .order('match_date', { ascending: true, nullsFirst: false })
+      if (error) throw error
+      return data
+    },
+  })
+
+  if (matches.isLoading) return <Spinner />
+  if (!matches.data?.length) return <Empty icon="🎲" text="ستظهر المباريات بعد إجراء القرعة" />
+
+  const maxRound = Math.max(...matches.data.map((m) => m.round))
+
+  return (
+    <>
+      <ErrorBox>{err}</ErrorBox>
+      {matches.data.map((m) => (
+        <div key={m.id} className="card">
+          <MatchCard m={m} maxRound={m.group_id ? null : maxRound} />
+          {m.status === 'scheduled' && (
+            <div className="btn-row">
+              <button className="btn sm" onClick={() => { setOpenResult(openResult === m.id ? null : m.id); setOpenSchedule(null) }}>📝 تسجيل النتيجة</button>
+              <button className="btn sm secondary" onClick={() => { setOpenSchedule(openSchedule === m.id ? null : m.id); setOpenResult(null) }}>📅 تحديد الموعد</button>
+            </div>
+          )}
+          {openSchedule === m.id && (
+            <ScheduleForm m={m} onDone={() => { setOpenSchedule(null); qc.invalidateQueries({ queryKey: ['tournament-matches', t.id] }) }} onError={setErr} />
+          )}
+          {openResult === m.id && (
+            <ResultForm m={m} t={t} onDone={() => { setOpenResult(null); qc.invalidateQueries({ queryKey: ['tournament-matches', t.id] }); qc.invalidateQueries({ queryKey: ['tournament-standings', t.id] }) }} onError={setErr} />
+          )}
+        </div>
+      ))}
+    </>
+  )
+}
+
+function ScheduleForm({ m, onDone, onError }) {
+  const [date, setDate] = useState(m.match_date || '')
+  const [time, setTime] = useState(m.start_time ? m.start_time.slice(0, 5) : '')
+  const save = useMutation({
+    mutationFn: async () => {
+      if (!date || !time) throw new Error('اختر التاريخ والوقت')
+      const { error } = await supabase.rpc('set_match_schedule', { p_match_id: m.id, p_date: date, p_time: time + ':00' })
+      if (error) throw new Error(error.message)
+    },
+    onSuccess: onDone,
+    onError: (e) => onError(e.message),
+  })
+  return (
+    <div className="card" style={{ background: 'var(--surface-2)' }}>
+      <div className="grid-2">
+        <div className="field"><label>التاريخ</label><input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} /></div>
+        <div className="field"><label>الساعة</label><input className="input" type="time" value={time} onChange={(e) => setTime(e.target.value)} /></div>
+      </div>
+      <button className="btn sm block" onClick={() => save.mutate()} disabled={save.isPending}>حفظ الموعد وإشعار الكباتن</button>
+    </div>
+  )
+}
+
+function ResultForm({ m, t, onDone, onError }) {
+  const [homeScore, setHomeScore] = useState('')
+  const [awayScore, setAwayScore] = useState('')
+  const [events, setEvents] = useState([]) // {player_id, team_id, event_type, minute}
+  const [ev, setEv] = useState({ player_id: '', team_id: m.home_team_id, event_type: 'goal', minute: '' })
+
+  const players = useQuery({
+    queryKey: ['squads', m.home_team_id, m.away_team_id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('team_members')
+        .select('team_id, player:profiles(id, full_name)')
+        .in('team_id', [m.home_team_id, m.away_team_id])
+      if (error) throw error
+      return data
+    },
+  })
+
+  const save = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.rpc('set_match_result', {
+        p_match_id: m.id,
+        p_home_score: parseInt(homeScore, 10),
+        p_away_score: parseInt(awayScore, 10),
+        p_events: events,
+      })
+      if (error) throw new Error(error.message)
+    },
+    onSuccess: onDone,
+    onError: (e) => onError(e.message),
+  })
+
+  const squad = (players.data || []).filter((p) => p.team_id === ev.team_id)
+
+  return (
+    <div className="card" style={{ background: 'var(--surface-2)' }}>
+      <div className="grid-2">
+        <div className="field">
+          <label>أهداف {m.home?.name}</label>
+          <input className="input" type="number" min="0" value={homeScore} onChange={(e) => setHomeScore(e.target.value)} />
+        </div>
+        <div className="field">
+          <label>أهداف {m.away?.name}</label>
+          <input className="input" type="number" min="0" value={awayScore} onChange={(e) => setAwayScore(e.target.value)} />
+        </div>
+      </div>
+
+      <div className="tiny" style={{ marginBottom: 6 }}>الأحداث (أهداف/بطاقات) — تُحدَّث الهدافون تلقائياً:</div>
+      <div className="grid-2">
+        <div className="field">
+          <select className="select" value={ev.team_id} onChange={(e) => setEv({ ...ev, team_id: e.target.value, player_id: '' })}>
+            <option value={m.home_team_id}>{m.home?.name}</option>
+            <option value={m.away_team_id}>{m.away?.name}</option>
+          </select>
+        </div>
+        <div className="field">
+          <select className="select" value={ev.event_type} onChange={(e) => setEv({ ...ev, event_type: e.target.value })}>
+            <option value="goal">⚽ هدف</option>
+            <option value="assist">🅰️ صناعة</option>
+            <option value="yellow_card">🟨 بطاقة صفراء</option>
+            <option value="red_card">🟥 بطاقة حمراء</option>
+          </select>
+        </div>
+      </div>
+      <div className="grid-2">
+        <div className="field">
+          <select className="select" value={ev.player_id} onChange={(e) => setEv({ ...ev, player_id: e.target.value })}>
+            <option value="">— اللاعب —</option>
+            {squad.map((p) => <option key={p.player.id} value={p.player.id}>{p.player.full_name}</option>)}
+          </select>
+        </div>
+        <div className="field">
+          <input className="input" type="number" min="1" max="130" placeholder="الدقيقة" value={ev.minute} onChange={(e) => setEv({ ...ev, minute: e.target.value })} />
+        </div>
+      </div>
+      <button
+        className="btn sm secondary"
+        disabled={!ev.player_id}
+        onClick={() => { setEvents((es) => [...es, { ...ev, minute: parseInt(ev.minute, 10) || null }]); setEv({ ...ev, player_id: '', minute: '' }) }}
+      >＋ إضافة حدث</button>
+
+      {events.length > 0 && (
+        <div className="mt8">
+          {events.map((e, i) => (
+            <div key={i} className="row between" style={{ padding: '4px 0' }}>
+              <span className="tiny">
+                {e.event_type === 'goal' ? '⚽' : e.event_type === 'assist' ? '🅰️' : e.event_type === 'yellow_card' ? '🟨' : '🟥'}{' '}
+                {(players.data || []).find((p) => p.player.id === e.player_id)?.player.full_name} — {e.minute || '?'}'
+              </span>
+              <button className="btn sm danger" onClick={() => setEvents(events.filter((_, j) => j !== i))}>حذف</button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <button className="btn block mt8" onClick={() => save.mutate()} disabled={save.isPending || homeScore === '' || awayScore === ''}>
+        {save.isPending ? 'جارٍ الحفظ…' : 'اعتماد النتيجة (تحديث الترتيب والهدافين تلقائياً)'}
+      </button>
+    </div>
+  )
+}
