@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
 import Layout from '../../components/Layout'
+import Icon from '../../components/Icon'
 import { Spinner, ErrorBox, OkBox } from '../../components/ui'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
@@ -43,20 +44,21 @@ export default function JoinByCodePage() {
   })
 
   return (
-    <Layout title="الانضمام إلى فريق">
+    <Layout title="الانضمام إلى فريق" titleIcon="users">
       <div className="card">
         <div className="field">
           <label>كود الدعوة</label>
           <input
             className="input"
             dir="ltr"
+            style={{ textAlign: 'center', fontSize: 17, fontWeight: 800, letterSpacing: 1.5 }}
             placeholder="ARENA-X7K29"
             value={code}
             onChange={(e) => setCode(e.target.value.toUpperCase())}
           />
         </div>
         <button className="btn block" onClick={() => lookup(code)} disabled={loading || !code.trim()}>
-          {loading ? 'جارٍ البحث…' : '🔍 بحث عن الفريق'}
+          <Icon name="search" size={16} /> {loading ? 'جارٍ البحث…' : 'بحث عن الفريق'}
         </button>
       </div>
 
@@ -67,15 +69,20 @@ export default function JoinByCodePage() {
 
       {team && (
         <div className="card">
-          <div className="card-title">{team.name}</div>
-          <div className="tiny">📍 {team.village_name || '—'} • 👥 {team.members_count} لاعب</div>
-          {team.description && <p className="muted mt8">{team.description}</p>}
-          <div className="kv"><span className="k">الكابتن</span><span className="v">🅒 {team.captain_name}</span></div>
+          <div className="row">
+            <div className="logo-box round"><Icon name="shirt" size={22} /></div>
+            <div style={{ flex: 1 }}>
+              <div className="card-title">{team.name}</div>
+              <div className="tiny">📍 {team.village_name || '—'} • 👥 {team.members_count} لاعب</div>
+            </div>
+          </div>
+          {team.description && <p className="muted mt8" style={{ fontSize: 13 }}>{team.description}</p>}
+          <div className="kv"><span className="k"><Icon name="shield" size={15} /> الكابتن</span><span className="v">🅒 {team.captain_name}</span></div>
           {!user ? (
             <Link to="/auth" state={{ from: `/join/${code}` }} className="btn block mt8">سجّل الدخول لإرسال طلب الانضمام</Link>
           ) : (
             <button className="btn block mt8" onClick={() => sendRequest.mutate()} disabled={sendRequest.isPending}>
-              {sendRequest.isPending ? 'جارٍ الإرسال…' : '🙋 إرسال طلب الانضمام'}
+              <Icon name="users" size={16} /> {sendRequest.isPending ? 'جارٍ الإرسال…' : 'إرسال طلب الانضمام'}
             </button>
           )}
         </div>

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import Layout from '../../components/Layout'
+import Icon from '../../components/Icon'
 import { Spinner, Empty, ErrorBox } from '../../components/ui'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
@@ -101,7 +102,7 @@ export default function ProfilePage() {
     onError: (e) => setErr(e.message),
   })
 
-  if (!profile) return <Layout title="حسابي"><Spinner /></Layout>
+  if (!profile) return <Layout title="حسابي" titleIcon="user"><Spinner /></Layout>
 
   const f = form || {
     fullName: profile.full_name || '', villageId: profile.village_id || '',
@@ -109,12 +110,12 @@ export default function ProfilePage() {
   }
 
   return (
-    <Layout title="👤 حسابي">
+    <Layout title="حسابي" titleIcon="user">
       <ErrorBox>{err}</ErrorBox>
 
-      <div className="card">
-        <div className="row">
-          <div className="avatar lg">
+      <div className="profile-hero">
+        <div className="row" style={{ position: 'relative' }}>
+          <div className="avatar lg" style={{ background: 'rgba(255,255,255,0.14)', color: '#fff' }}>
             {profile.avatar_url
               ? <img src={profile.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               : (profile.full_name || '؟').charAt(0)}
@@ -122,20 +123,25 @@ export default function ProfilePage() {
           <div style={{ flex: 1 }}>
             <div className="row" style={{ gap: 6 }}>
               <b style={{ fontSize: 17 }}>{profile.full_name || 'لاعب'}</b>
-              {profile.is_premium && <span className="badge warn">★ Premium</span>}
+              {profile.is_premium && <span className="badge gold">★ Premium</span>}
             </div>
-            <div className="tiny">
+            <div style={{ fontSize: 12.5, opacity: 0.85 }}>
               {(villages || []).find((v) => v.id === profile.village_id)?.name || '—'}
               {profile.position ? ` • ${profile.position}` : ''}
               {profile.jersey_number ? ` • رقم ${profile.jersey_number}` : ''}
             </div>
-            <div className="tiny">{profile.role === 'venue_owner' ? '🏟️ صاحب ملعب' : profile.role === 'admin' ? '🛡️ مدير' : '⚽ لاعب'}</div>
+            <div style={{ fontSize: 11.5, opacity: 0.7 }}>
+              {profile.role === 'venue_owner' ? '🏟️ صاحب ملعب' : profile.role === 'admin' ? '🛡️ مدير' : '⚽ لاعب'}
+            </div>
           </div>
         </div>
-        <input type="file" accept="image/*" className="input mt8" onChange={(e) => e.target.files?.[0] && uploadAvatar.mutate(e.target.files[0])} />
-        <div className="btn-row">
-          <button className="btn sm outline" onClick={() => setEdit(!edit)}>✏️ تعديل الملف</button>
-          {!profile.is_premium && <Link to="/premium" className="btn sm">★ ترقية إلى Premium</Link>}
+        <div className="btn-row" style={{ marginTop: 12, position: 'relative' }}>
+          <button className="btn sm secondary" onClick={() => setEdit(!edit)}><Icon name="edit" size={13} /> تعديل الملف</button>
+          <label className="btn sm secondary" style={{ cursor: 'pointer' }}>
+            <Icon name="camera" size={13} /> صورة
+            <input type="file" accept="image/*" hidden onChange={(e) => e.target.files?.[0] && uploadAvatar.mutate(e.target.files[0])} />
+          </label>
+          {!profile.is_premium && <Link to="/premium" className="btn sm"><Icon name="star" size={13} /> ترقية Premium</Link>}
         </div>
       </div>
 
@@ -163,22 +169,23 @@ export default function ProfilePage() {
         </div>
       )}
 
-      <div className="section">
-        <div className="section-head"><h2>📊 إحصائياتي</h2></div>
-        <div className="grid-3">
-          <div className="card tap mb0 center"><div style={{ fontSize: 20, fontWeight: 800 }}>{stats.data?.goals ?? 0}</div><div className="tiny">أهداف</div></div>
-          <div className="card tap mb0 center"><div style={{ fontSize: 20, fontWeight: 800 }}>{stats.data?.assists ?? 0}</div><div className="tiny">صناعة</div></div>
-          <div className="card tap mb0 center"><div style={{ fontSize: 20, fontWeight: 800 }}>{stats.data?.matches ?? 0}</div><div className="tiny">مباريات</div></div>
+      <div className="section" style={{ marginTop: 16 }}>
+        <div className="section-head"><h2><Icon name="trophy" size={16} /> إحصائياتي</h2></div>
+        <div className="grid-4">
+          <div className="stat-card"><div className="num">{stats.data?.goals ?? 0}</div><div className="lbl">أهداف</div></div>
+          <div className="stat-card"><div className="num">{stats.data?.assists ?? 0}</div><div className="lbl">صناعة</div></div>
+          <div className="stat-card"><div className="num">{stats.data?.matches ?? 0}</div><div className="lbl">مباريات</div></div>
+          <div className="stat-card"><div className="num">{(stats.data?.yellow ?? 0) + (stats.data?.red ?? 0)}</div><div className="lbl">بطاقات</div></div>
         </div>
       </div>
 
       <div className="section">
-        <div className="section-head"><h2>⚽ فرقي</h2></div>
-        {memberships.isLoading ? <Spinner /> : memberships.data?.length === 0 ? <Empty icon="⚽" text="لا تنتمي إلى فريق بعد" /> : (
+        <div className="section-head"><h2><Icon name="shirt" size={16} /> فرقي</h2></div>
+        {memberships.isLoading ? <Spinner /> : memberships.data?.length === 0 ? <Empty icon="ball" text="لا تنتمي إلى فريق بعد" /> : (
           memberships.data.map((m) => (
-            <Link key={m.id} to={`/teams/${m.team.id}`} className="card tap">
+            <Link key={m.id} to={`/teams/${m.team.id}`} className="card tap" style={{ padding: 12 }}>
               <div className="row between">
-                <b>{m.team.name}</b>
+                <b style={{ fontSize: 14 }}>{m.team.name}</b>
                 {m.role === 'captain'
                   ? <span className="badge dark">🅒 Captain</span>
                   : <span className={`badge ${m.team.is_active ? 'neutral' : 'danger'}`}>{m.team.is_active ? 'عضو' : 'فريق موقوف'}</span>}
@@ -189,12 +196,12 @@ export default function ProfilePage() {
       </div>
 
       <div className="section">
-        <div className="section-head"><h2>📅 حجوزاتي</h2></div>
-        {bookings.isLoading ? <Spinner /> : bookings.data?.length === 0 ? <Empty icon="📅" text="لا حجوزات بعد" /> : (
+        <div className="section-head"><h2><Icon name="calendar" size={16} /> حجوزاتي</h2></div>
+        {bookings.isLoading ? <Spinner /> : bookings.data?.length === 0 ? <Empty icon="calendar" text="لا حجوزات بعد" /> : (
           bookings.data.map((b) => (
-            <div key={b.id} className="card">
+            <div key={b.id} className="card" style={{ padding: 13 }}>
               <div className="row between">
-                <div className="card-title">{b.venue?.name}</div>
+                <div className="card-title" style={{ fontSize: 14 }}>{b.venue?.name}</div>
                 <span className={`badge ${b.booking_status === 'confirmed' ? 'success' : b.booking_status === 'pending_review' ? 'warn' : 'danger'}`}>
                   {BOOKING_STATUS_LABELS[b.booking_status]}
                 </span>
@@ -205,8 +212,17 @@ export default function ProfilePage() {
         )}
       </div>
 
+      <div className="section">
+        <Link to="/about" className="card tap" style={{ padding: 13 }}>
+          <div className="row between">
+            <span className="card-title"><Icon name="info" size={16} /> من نحن / تفاصيل عنا</span>
+            <Icon name="chevL" size={16} style={{ color: 'var(--text-3)' }} />
+          </div>
+        </Link>
+      </div>
+
       <button className="btn danger block mt16" onClick={async () => { await supabase.auth.signOut(); location.reload() }}>
-        🚪 تسجيل الخروج
+        <Icon name="logout" size={16} /> تسجيل الخروج
       </button>
     </Layout>
   )

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import Layout from '../../components/Layout'
+import Icon from '../../components/Icon'
 import { Spinner, Empty, ErrorBox, OkBox } from '../../components/ui'
 import { supabase } from '../../lib/supabase'
 import { sypText, timeAr, dateAr, BOOKING_STATUS_LABELS } from '../../lib/constants'
@@ -10,14 +11,13 @@ export default function BookingPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const qc = useQueryClient()
-  const [step, setStep] = useState(1) // 1 date/time, 2 payment, 3 done
+  const [step, setStep] = useState(1)
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
   const [hours, setHours] = useState(1)
   const [start, setStart] = useState('')
   const [receiptFile, setReceiptFile] = useState(null)
   const [bookingId, setBookingId] = useState(null)
   const [err, setErr] = useState('')
-  const [ok, setOk] = useState('')
 
   const venue = useQuery({
     queryKey: ['venue', id],
@@ -28,7 +28,6 @@ export default function BookingPage() {
     },
   })
 
-  // Already-taken slots for that date
   const taken = useQuery({
     queryKey: ['bookings-public', id, date],
     queryFn: async () => {
@@ -45,10 +44,7 @@ export default function BookingPage() {
 
   const slots = useMemo(() => {
     if (!venue.data) return []
-    const toMin = (t) => {
-      const [h, m] = String(t).split(':').map(Number)
-      return h * 60 + m
-    }
+    const toMin = (t) => { const [h, m] = String(t).split(':').map(Number); return h * 60 + m }
     const open = toMin(venue.data.open_time)
     const close = toMin(venue.data.close_time)
     const out = []
@@ -57,10 +53,7 @@ export default function BookingPage() {
   }, [venue.data])
 
   const isTaken = (t) => {
-    const toMin = (s) => {
-      const [h, m] = String(s).split(':').map(Number)
-      return h * 60 + m
-    }
+    const toMin = (s) => { const [h, m] = String(s).split(':').map(Number); return h * 60 + m }
     return (taken.data || []).some((b) => {
       const s = toMin(b.start_time)
       const e = toMin(b.end_time)
@@ -76,18 +69,13 @@ export default function BookingPage() {
     mutationFn: async () => {
       if (!start) throw new Error('اختر وقت البداية')
       const { data, error } = await supabase.rpc('create_booking', {
-        p_venue_id: id,
-        p_date: date,
-        p_start: start + ':00',
-        p_hours: hours,
+        p_venue_id: id, p_date: date, p_start: start + ':00', p_hours: hours,
       })
       if (error) throw new Error(error.message)
       return data
     },
     onSuccess: (bid) => {
-      setBookingId(bid)
-      setStep(2)
-      setErr('')
+      setBookingId(bid); setStep(2); setErr('')
       qc.invalidateQueries({ queryKey: ['bookings-public', id, date] })
     },
     onError: (e) => setErr(e.message.replace(/^.*?\(PG::.*?\)\s*/, '').replace(/Error:\s*/, '')),
@@ -100,36 +88,46 @@ export default function BookingPage() {
       const path = `${userData.user.id}/${bookingId}/${Date.now()}_${receiptFile.name}`
       const up = await supabase.storage.from('receipts').upload(path, receiptFile, { upsert: false })
       if (up.error) throw up.error
-      // Private bucket: we store the object path; the venue owner views it via a signed URL.
-      const { error } = await supabase.rpc('set_payment_receipt', {
-        p_booking_id: bookingId,
-        p_url: path,
-      })
+      // Private bucket: store the object path; the venue owner views it via a signed URL.
+      const { error } = await supabase.rpc('set_payment_receipt', { p_booking_id: bookingId, p_url: path })
       if (error) throw error
-      return path
     },
     onError: (e) => setErr(e.message),
-    onSuccess: () => {
-      setErr('')
-      setOk('تم إرسال إشعار الدفع — الحجز بانتظار مراجعة صاحب الملعب.')
-      setStep(3)
-    },
+    onSuccess: () => { setErr(''); setStep(3) },
   })
 
-  if (venue.isLoading) return <Layout title="الحجز"><Spinner /></Layout>
+  if (venue.isLoading) return <Layout title="الحجز" titleIcon="calendar"><Spinner /></Layout>
   const v = venue.data
 
   return (
-    <Layout title={`حجز: ${v?.name || ''}`}>
+    <Layout title="حجز ملعب" titleIcon="calendar">
+      {/* Stepper */}
+      <div className="card" style={{ padding: '11px 15px', display: 'flex', alignItems: 'center', gap: 6 }}>
+        {['الوقت', 'الدفع', 'المراجعة'].map((s, i) => (
+          <div key={s} style={{ flex: 1, textAlign: 'center' }}>
+            <div style={{
+              width: 26, height: 26, borderRadius: 9, margin: '0 auto 3px',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: step > i ? 'var(--brand)' : 'var(--surface-2)',
+              color: step > i ? '#fff' : 'var(--text-3)',
+              fontWeight: 800, fontSize: 12, border: step === i + 1 ? '2px solid var(--brand)' : '1.5px solid var(--border)',
+            }}>
+              {step > i + 1 ? '✓' : i + 1}
+            </div>
+            <div className="tiny" style={{ fontWeight: 700, color: step >= i + 1 ? 'var(--brand-strong)' : 'var(--text-3)' }}>{s}</div>
+          </div>
+        ))}
+      </div>
+
       {step === 1 && (
         <>
           <div className="card">
             <div className="field">
-              <label>التاريخ</label>
+              <label><Icon name="calendar" size={14} /> التاريخ</label>
               <input type="date" className="input" min={new Date().toISOString().slice(0, 10)} value={date} onChange={(e) => { setDate(e.target.value); setStart('') }} />
             </div>
             <div className="field">
-              <label>عدد الساعات</label>
+              <label><Icon name="clock" size={14} /> عدد الساعات</label>
               <div className="chips" style={{ marginBottom: 0 }}>
                 {[1, 2, 3].map((h) => (
                   <button key={h} className={`chip ${hours === h ? 'active' : ''}`} onClick={() => { setHours(h); setStart('') }}>{h} ساعة</button>
@@ -137,7 +135,7 @@ export default function BookingPage() {
               </div>
             </div>
             <div className="field mb0">
-              <label>وقت البداية</label>
+              <label><Icon name="clock" size={14} /> وقت البداية — الأوقات المشطوبة محجوزة</label>
               <div className="chips" style={{ marginBottom: 0 }}>
                 {slots.map((t) => {
                   const label = `${String(Math.floor(t / 60)).padStart(2, '0')}:00`
@@ -159,13 +157,13 @@ export default function BookingPage() {
           </div>
 
           <div className="card">
-            <div className="kv"><span className="k">السعر الكامل</span><span className="v">{sypText(fullPrice)}</span></div>
-            <div className="kv"><span className="k">العربون (يُدفع الآن)</span><span className="v">{sypText(deposit)}</span></div>
-            <div className="kv"><span className="k">المتبقي على الملعب</span><span className="v">{sypText(fullPrice - deposit)}</span></div>
+            <div className="kv"><span className="k"><Icon name="money" size={15} /> السعر الكامل</span><span className="v">{sypText(fullPrice)}</span></div>
+            <div className="kv"><span className="k"><Icon name="card" size={15} /> العربون (يُدفع الآن)</span><span className="v price">{sypText(deposit)}</span></div>
+            <div className="kv"><span className="k"><Icon name="money" size={15} /> المتبقي على الملعب</span><span className="v">{sypText(fullPrice - deposit)}</span></div>
           </div>
 
           <ErrorBox>{err}</ErrorBox>
-          <button className="btn block" disabled={!start || createBooking.isPending} onClick={() => createBooking.mutate()}>
+          <button className="btn block lg" disabled={!start || createBooking.isPending} onClick={() => createBooking.mutate()}>
             {createBooking.isPending ? 'جارٍ إنشاء الحجز…' : 'متابعة إلى الدفع'}
           </button>
         </>
@@ -173,18 +171,19 @@ export default function BookingPage() {
 
       {step === 2 && (
         <>
-          <div className="amount-due center">
-            المبلغ المطلوب: {sypText(deposit)} (عربون)
+          <div className="amount-due">
+            المبلغ المطلوب (عربون)
+            <span className="am">{sypText(deposit)}</span>
           </div>
-          <div style={{ height: 10 }} />
+          <div className="card mt8">
+            <div className="card-title"><Icon name="card" size={17} /> حوّل عبر شام كاش</div>
+            <div className="kv"><span className="k"><Icon name="phone" size={15} /> رقم الحساب</span><span className="v" dir="ltr">{v?.shamcash_number || 'غير متوفر'}</span></div>
+            {v?.shamcash_name && <div className="kv"><span className="k"><Icon name="user" size={15} /> اسم الحساب</span><span className="v">{v.shamcash_name}</span></div>}
+            {v?.shamcash_qr_url && <div className="qr-box mt8"><img src={v.shamcash_qr_url} alt="QR شام كاش" /></div>}
+          </div>
           <div className="card">
-            <div className="card-title">💳 حوّل عبر شام كاش</div>
-            <div className="kv"><span className="k">رقم الحساب</span><span className="v" dir="ltr">{v?.shamcash_number || 'غير متوفر'}</span></div>
-            {v?.shamcash_name && <div className="kv"><span className="k">اسم الحساب</span><span className="v">{v.shamcash_name}</span></div>}
-            {v?.shamcash_qr_url && <img src={v.shamcash_qr_url} alt="QR شام كاش" style={{ width: 160, borderRadius: 10, margin: '10px auto', display: 'block' }} />}
-            <hr className="hr" />
             <div className="field mb0">
-              <label>📸 ارفع صورة إشعار التحويل</label>
+              <label><Icon name="camera" size={14} /> ارفع صورة إشعار التحويل</label>
               <input type="file" accept="image/*" className="input" onChange={(e) => setReceiptFile(e.target.files?.[0] || null)} />
               <div className="hint">لن يُؤكد الحجز إلا بعد مراجعة صاحب الملعب للإشعار.</div>
             </div>
@@ -192,7 +191,7 @@ export default function BookingPage() {
           <ErrorBox>{err}</ErrorBox>
           <div className="btn-row">
             <button className="btn block" disabled={!receiptFile || uploadReceipt.isPending} onClick={() => uploadReceipt.mutate()}>
-              {uploadReceipt.isPending ? 'جارٍ الرفع…' : 'إرسال الحجز للمراجعة'}
+              <Icon name="send" size={16} /> {uploadReceipt.isPending ? 'جارٍ الرفع…' : 'إرسال الحجز للمراجعة'}
             </button>
             <button className="btn outline" onClick={() => setStep(1)}>رجوع</button>
           </div>
@@ -200,11 +199,12 @@ export default function BookingPage() {
       )}
 
       {step === 3 && (
-        <div className="card center" style={{ padding: 30 }}>
-          <div style={{ fontSize: 44 }}>🕓</div>
+        <div className="card center" style={{ padding: 34 }}>
+          <div style={{ width: 74, height: 74, borderRadius: 24, background: 'var(--brand-soft)', color: 'var(--brand-strong)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+            <Icon name="checkC" size={38} />
+          </div>
           <h2>تم إرسال طلب الحجز</h2>
           <p className="muted">سيصلك إشعار فور مراجعة صاحب الملعب لإشعار التحويل وقبول الحجز أو رفضه.</p>
-          <OkBox>{ok}</OkBox>
           <div className="btn-row" style={{ justifyContent: 'center' }}>
             <button className="btn" onClick={() => navigate('/profile')}>حجوزاتي</button>
             <Link to={`/venues/${id}`} className="btn outline">صفحة الملعب</Link>
@@ -215,56 +215,6 @@ export default function BookingPage() {
   )
 }
 
-export function BookingsList({ ownerIdView = null }) {
-  const qc = useQueryClient()
-  const [err, setErr] = useState('')
-
-  const bookings = useQuery({
-    queryKey: ['bookings', ownerIdView],
-    queryFn: async () => {
-      let q = supabase
-        .from('bookings')
-        .select('*, venue:venues(id, name, owner_id), user:profiles(full_name)')
-        .order('created_at', { ascending: false })
-        .limit(50)
-      const { data, error } = await q
-      if (error) throw error
-      return data
-    },
-  })
-
-  const act = useMutation({
-    mutationFn: async ({ fn, args }) => {
-      const { error } = await supabase.rpc(fn, args)
-      if (error) throw new Error(error.message)
-    },
-    onSuccess: () => {
-      setErr('')
-      qc.invalidateQueries({ queryKey: ['bookings'] })
-    },
-    onError: (e) => setErr(e.message),
-  })
-
-  if (bookings.isLoading) return <Spinner />
-  if (!bookings.data?.length) return <Empty icon="📅" text="لا توجد حجوزات" />
-  return (
-    <>
-      <ErrorBox>{err}</ErrorBox>
-      {bookings.data.map((b) => (
-        <div key={b.id} className="card">
-          <div className="row between">
-            <div className="card-title">{b.venue?.name}</div>
-            <span className={`badge ${b.booking_status === 'confirmed' ? 'success' : b.booking_status === 'pending_review' ? 'warn' : 'danger'}`}>
-              {BOOKING_STATUS_LABELS[b.booking_status]}
-            </span>
-          </div>
-          <div className="tiny">📅 {dateAr(b.booking_date)} • ⏰ {timeAr(b.start_time)} — {timeAr(b.end_time)}</div>
-          {ownerIdView && b.user?.full_name && <div className="tiny">👤 {b.user.full_name}</div>}
-          <div className="kv"><span className="k">السعر الكامل</span><span className="v">{sypText(b.full_price)}</span></div>
-          <div className="kv"><span className="k">العربون</span><span className="v">{sypText(b.deposit_amount)}</span></div>
-          <div className="kv"><span className="k">المتبقي</span><span className="v">{sypText(b.remaining_amount)}</span></div>
-        </div>
-      ))}
-    </>
-  )
+export function BookingsList() {
+  return null
 }

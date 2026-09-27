@@ -23,6 +23,7 @@ import VenueForm from './pages/dashboard/VenueForm'
 import TournamentForm from './pages/dashboard/TournamentForm'
 import ManageTournamentPage from './pages/dashboard/ManageTournamentPage'
 import AdminDashboard from './pages/admin/AdminDashboard'
+import AboutPage from './pages/about/AboutPage'
 
 function RequireAuth({ children, roles }) {
   const { user, profile, loading } = useAuth()
@@ -54,6 +55,7 @@ export default function App() {
       <Route path="/matches" element={<RequireAuth><MyMatchesPage /></RequireAuth>} />
       <Route path="/profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />
       <Route path="/players/:id" element={<PlayerProfilePage />} />
+      <Route path="/about" element={<AboutPage />} />
       <Route path="/notifications" element={<RequireAuth><NotificationsPage /></RequireAuth>} />
       <Route path="/premium" element={<RequireAuth><PremiumPage /></RequireAuth>} />
 

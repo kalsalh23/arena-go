@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import Layout from '../../components/Layout'
+import Icon from '../../components/Icon'
 import { Spinner, ErrorBox } from '../../components/ui'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
@@ -15,7 +16,6 @@ export default function CreateTeamPage() {
   const [err, setErr] = useState('')
   const [form, setForm] = useState({ name: '', description: '', village_id: profile?.village_id || '', logo_url: '' })
 
-  // one active team per player is enforced by a DB trigger too
   const myTeams = useQuery({
     queryKey: ['my-active-team', user?.id],
     enabled: !!user,
@@ -56,12 +56,12 @@ export default function CreateTeamPage() {
     onError: (e) => setErr(e.message.replace('Error: ', '')),
   })
 
-  if (myTeams.isLoading) return <Layout title="إنشاء فريق"><Spinner /></Layout>
+  if (myTeams.isLoading) return <Layout title="إنشاء فريق" titleIcon="ball"><Spinner /></Layout>
   if (myTeams.data?.length > 0) {
     return (
-      <Layout title="إنشاء فريق">
+      <Layout title="إنشاء فريق" titleIcon="ball">
         <div className="card center">
-          <div style={{ fontSize: 38 }}>⚽</div>
+          <div className="empty-ic" style={{ margin: '0 auto 12px' }}><Icon name="ball" size={30} /></div>
           <h2>لديك فريق نشط بالفعل</h2>
           <p className="muted">يمكن لكل لاعب إنشاء فريق واحد نشط فقط. فريقك: <b>{myTeams.data[0].name}</b></p>
           <Link to={`/teams/${myTeams.data[0].id}`} className="btn">الذهاب إلى فريقك</Link>
@@ -71,7 +71,7 @@ export default function CreateTeamPage() {
   }
 
   return (
-    <Layout title="إنشاء فريق">
+    <Layout title="إنشاء فريق" titleIcon="ball">
       <ErrorBox>{err}</ErrorBox>
       <div className="card">
         <div className="field">
@@ -92,12 +92,12 @@ export default function CreateTeamPage() {
         <div className="field mb0">
           <label>شعار الفريق</label>
           <input type="file" accept="image/*" className="input" onChange={(e) => e.target.files?.[0] && uploadLogo.mutate(e.target.files[0])} />
-          {form.logo_url && <img src={form.logo_url} alt="" style={{ width: 64, borderRadius: 12, marginTop: 8 }} />}
+          {form.logo_url && <img src={form.logo_url} alt="" style={{ width: 64, borderRadius: 16, marginTop: 8 }} />}
         </div>
       </div>
       <p className="hint">سيتم توليد كود دعوة فريد تلقائياً (مثل ARENA-X7K29) وستصبح كابتن الفريق.</p>
-      <button className="btn block" onClick={() => create.mutate()} disabled={create.isPending}>
-        {create.isPending ? 'جارٍ الإنشاء…' : 'إنشاء الفريق'}
+      <button className="btn block lg" onClick={() => create.mutate()} disabled={create.isPending}>
+        <Icon name="plus" size={17} /> {create.isPending ? 'جارٍ الإنشاء…' : 'إنشاء الفريق'}
       </button>
     </Layout>
   )

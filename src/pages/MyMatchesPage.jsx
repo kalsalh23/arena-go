@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import Layout from '../components/Layout'
+import Icon from '../components/Icon'
 import { Spinner, Empty } from '../components/ui'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
-import { dateAr, timeAr } from '../lib/constants'
 import { MatchCard } from './tournaments/TournamentDetailPage'
 
 export default function MyMatchesPage() {
@@ -41,11 +41,11 @@ export default function MyMatchesPage() {
   })
 
   if (!user) return null
-  if (myTeams.isLoading) return <Layout title="مبارياتي"><Spinner /></Layout>
+  if (myTeams.isLoading) return <Layout title="مبارياتي" titleIcon="calendar"><Spinner /></Layout>
   if (!myTeams.data?.length) {
     return (
-      <Layout title="مبارياتي">
-        <Empty icon="⚽" text="أنت لست عضواً في أي فريق بعد" />
+      <Layout title="مبارياتي" titleIcon="calendar">
+        <Empty icon="ball" text="أنت لست عضواً في أي فريق بعد" />
         <Link to="/teams" className="btn block">تصفح الفرق</Link>
       </Layout>
     )
@@ -55,24 +55,28 @@ export default function MyMatchesPage() {
   const past = (matches.data || []).filter((m) => m.status !== 'scheduled')
 
   return (
-    <Layout title="مبارياتي">
+    <Layout title="مبارياتي" titleIcon="calendar">
       <div className="section" style={{ marginTop: 0 }}>
-        <div className="section-head"><h2>⏳ القادمة</h2></div>
-        {matches.isLoading ? <Spinner /> : upcoming.length === 0 ? <Empty icon="📅" text="لا مباريات قادمة" /> : (
+        <div className="section-head"><h2><Icon name="clock" size={16} /> القادمة</h2></div>
+        {matches.isLoading ? <Spinner /> : upcoming.length === 0 ? <Empty icon="calendar" text="لا مباريات قادمة" /> : (
           upcoming.map((m) => (
             <div key={m.id}>
-              <div className="tiny" style={{ marginBottom: -6, marginTop: 8 }}>🏆 {m.tournament?.name}</div>
+              <div className="tiny" style={{ margin: '8px 0 -8px', fontWeight: 800, color: 'var(--brand-strong)' }}>
+                <Icon name="trophy" size={12} /> {m.tournament?.name}
+              </div>
               <MatchCard m={m} />
             </div>
           ))
         )}
       </div>
       <div className="section">
-        <div className="section-head"><h2>✅ سابقة</h2></div>
-        {past.length === 0 ? <Empty icon="📊" text="لا مباريات سابقة" /> : (
+        <div className="section-head"><h2><Icon name="checkC" size={16} /> سابقة</h2></div>
+        {past.length === 0 ? <Empty icon="calendar" text="لا مباريات سابقة" /> : (
           past.map((m) => (
             <div key={m.id}>
-              <div className="tiny" style={{ marginBottom: -6, marginTop: 8 }}>🏆 {m.tournament?.name}</div>
+              <div className="tiny" style={{ margin: '8px 0 -8px', fontWeight: 800, color: 'var(--brand-strong)' }}>
+                <Icon name="trophy" size={12} /> {m.tournament?.name}
+              </div>
               <MatchCard m={m} />
             </div>
           ))

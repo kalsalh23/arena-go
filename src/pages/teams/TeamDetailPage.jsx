@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import Layout from '../../components/Layout'
+import Icon from '../../components/Icon'
 import { Spinner, Empty, ErrorBox, OkBox } from '../../components/ui'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
@@ -16,6 +17,7 @@ export default function TeamDetailPage() {
   const [ok, setOk] = useState('')
   const [editMode, setEditMode] = useState(false)
   const [form, setForm] = useState(null)
+  const [copied, setCopied] = useState(false)
 
   const team = useQuery({
     queryKey: ['team', id],
@@ -60,10 +62,7 @@ export default function TeamDetailPage() {
     queryKey: ['my-memberships', user?.id],
     enabled: !!user,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('team_members')
-        .select('team_id')
-        .eq('player_id', user.id)
+      const { data, error } = await supabase.from('team_members').select('team_id').eq('player_id', user.id)
       if (error) throw error
       return data.map((m) => m.team_id)
     },
@@ -140,10 +139,8 @@ export default function TeamDetailPage() {
   const saveTeam = useMutation({
     mutationFn: async () => {
       const { error } = await supabase.from('teams').update({
-        name: form.name,
-        description: form.description,
-        village_id: form.village_id || null,
-        logo_url: form.logo_url || null,
+        name: form.name, description: form.description,
+        village_id: form.village_id || null, logo_url: form.logo_url || null,
       }).eq('id', id)
       if (error) throw new Error(error.message)
     },
@@ -161,52 +158,67 @@ export default function TeamDetailPage() {
     onError: (e) => setErr(e.message),
   })
 
+  function copyInvite() {
+    const url = `${location.origin}/join/${team.data.invite_code}`
+    navigator.clipboard?.writeText(url)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1800)
+  }
+
   if (team.isLoading) return <Layout title="الفريق"><Spinner /></Layout>
-  if (!team.data) return <Layout title="الفريق"><Empty icon="⚽" text="الفريق غير موجود" /></Layout>
+  if (!team.data) return <Layout title="الفريق"><Empty icon="ball" text="الفريق غير موجود" /></Layout>
   const t = team.data
 
   return (
-    <Layout title={t.name}>
+    <Layout title={t.name} titleIcon="ball">
       <ErrorBox>{err}</ErrorBox>
       <OkBox>{ok}</OkBox>
 
       <div className="card">
         <div className="row">
-          <div className="logo-box" style={{ width: 60, height: 60 }}>
-            {t.logo_url ? <img src={t.logo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : '⚽'}
+          <div className="logo-box round" style={{ width: 62, height: 62 }}>
+            {t.logo_url ? <img src={t.logo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <Icon name="shirt" size={28} />}
           </div>
           <div style={{ flex: 1 }}>
-            <h2 style={{ margin: 0 }}>{t.name}</h2>
-            <div className="tiny">📍 {t.village?.name || '—'}</div>
+            <h2 style={{ margin: 0, fontSize: 17.5 }}>{t.name}</h2>
+            <div className="tiny"><Icon name="pin" size={11} /> {t.village?.name || '—'}</div>
           </div>
-          {isMember && <span className="badge success">فريقك</span>}
+          {isMember && <span className="badge success"><Icon name="check" size={11} /> فريقك</span>}
         </div>
-        {t.description && <p className="muted mt8">{t.description}</p>}
-        <div className="kv"><span className="k">الكابتن</span><span className="v">🅒 {t.captain?.full_name || '—'}</span></div>
-        <div className="kv"><span className="k">عدد اللاعبين</span><span className="v">{members.data?.length ?? '…'}</span></div>
+        {t.description && <p className="muted mt8" style={{ fontSize: 13 }}>{t.description}</p>}
+        <div className="kv"><span className="k"><Icon name="shield" size={15} /> الكابتن</span><span className="v">🅒 {t.captain?.full_name || '—'}</span></div>
+        <div className="kv"><span className="k"><Icon name="users" size={15} /> عدد اللاعبين</span><span className="v">{members.data?.length ?? '…'}</span></div>
         {isCaptain && (
-          <>
-            <div className="kv"><span className="k">كود الدعوة</span><span className="v" dir="ltr" style={{ fontWeight: 800 }}>{t.invite_code}</span></div>
-            <div className="hint">رابط الدعوة: /join/{t.invite_code}</div>
-          </>
+          <div className="card mt8" style={{ background: 'var(--brand-soft)', border: '1px dashed var(--brand-soft-2)', boxShadow: 'none', padding: 12 }}>
+            <div className="row between">
+              <div>
+                <div className="tiny" style={{ fontWeight: 700, color: 'var(--brand-strong)' }}>كود الدعوة</div>
+                <div dir="ltr" style={{ fontWeight: 900, fontSize: 16, color: 'var(--brand-deep)' }}>{t.invite_code}</div>
+              </div>
+              <div className="row" style={{ gap: 6 }}>
+                <button className="btn sm" onClick={copyInvite}><Icon name={copied ? 'check' : 'copy'} size={14} /> {copied ? 'تم النسخ' : 'نسخ الرابط'}</button>
+              </div>
+            </div>
+            <div className="tiny mt8" dir="ltr" style={{ textAlign: 'left', direction: 'ltr' }}>/join/{t.invite_code}</div>
+          </div>
         )}
       </div>
 
       {user && !isMember && !myRequest.data && (
-        <button className="btn block" onClick={() => sendRequest.mutate()} disabled={sendRequest.isPending}>
-          {sendRequest.isPending ? 'جارٍ الإرسال…' : '🙋 أرسل طلب انضمام'}
+        <button className="btn block lg" onClick={() => sendRequest.mutate()} disabled={sendRequest.isPending}>
+          <Icon name="users" size={17} /> {sendRequest.isPending ? 'جارٍ الإرسال…' : 'أرسل طلب انضمام'}
         </button>
       )}
       {myRequest.data?.status === 'pending' && (
         <div className="card center"><span className="badge warn">طلبك قيد المراجعة ⏳</span></div>
       )}
       {user && isMember && !isCaptain && (
-        <button className="btn danger block" onClick={() => leaveTeam.mutate()}>مغادرة الفريق</button>
+        <button className="btn danger block" onClick={() => leaveTeam.mutate()}><Icon name="logout" size={15} /> مغادرة الفريق</button>
       )}
       {isCaptain && (
         <div className="btn-row">
-          <button className="btn outline" onClick={() => setEditMode(!editMode)}>✏️ تعديل الفريق</button>
-          <button className="btn danger" onClick={() => { if (confirm('هل تريد حل الفريق؟')) disband.mutate() }}>حل الفريق</button>
+          <button className="btn outline" onClick={() => setEditMode(!editMode)}><Icon name="edit" size={15} /> تعديل الفريق</button>
+          <button className="btn danger" onClick={() => { if (confirm('هل تريد حل الفريق؟')) disband.mutate() }}><Icon name="trash" size={15} /> حل الفريق</button>
         </div>
       )}
 
@@ -223,7 +235,7 @@ export default function TeamDetailPage() {
           <div className="field">
             <label>شعار الفريق</label>
             <input type="file" accept="image/*" className="input" onChange={(e) => e.target.files?.[0] && uploadLogo.mutate(e.target.files[0])} />
-            {form?.logo_url && <img src={form.logo_url} alt="" style={{ width: 60, borderRadius: 10, marginTop: 6 }} />}
+            {form?.logo_url && <img src={form.logo_url} alt="" style={{ width: 60, borderRadius: 14, marginTop: 6 }} />}
           </div>
           <button className="btn block" onClick={() => saveTeam.mutate()} disabled={saveTeam.isPending}>حفظ التعديلات</button>
         </div>
@@ -231,16 +243,16 @@ export default function TeamDetailPage() {
 
       {isCaptain && requests.data?.length > 0 && (
         <div className="section">
-          <div className="section-head"><h2>📨 طلبات الانضمام ({requests.data.length})</h2></div>
+          <div className="section-head"><h2><Icon name="users" size={17} /> طلبات الانضمام ({requests.data.length})</h2></div>
           <div className="card">
             {requests.data.map((r) => (
               <div key={r.id} className="list-item">
                 <div className="avatar">{(r.player?.full_name || '؟').charAt(0)}</div>
                 <div style={{ flex: 1 }}>
-                  <b style={{ fontSize: 14 }}>{r.player?.full_name}</b>
+                  <b style={{ fontSize: 13.5 }}>{r.player?.full_name}</b>
                   {r.player?.position && <div className="tiny">{r.player.position}</div>}
                 </div>
-                <div className="row">
+                <div className="row" style={{ gap: 6 }}>
                   <button className="btn sm success" onClick={() => reviewRequest.mutate({ reqId: r.id, decision: 'approved' })}>قبول</button>
                   <button className="btn sm danger" onClick={() => reviewRequest.mutate({ reqId: r.id, decision: 'rejected' })}>رفض</button>
                 </div>
@@ -251,7 +263,7 @@ export default function TeamDetailPage() {
       )}
 
       <div className="section">
-        <div className="section-head"><h2>👥 قائمة الفريق</h2></div>
+        <div className="section-head"><h2><Icon name="users" size={17} /> قائمة الفريق</h2></div>
         {members.isLoading ? <Spinner /> : (
           <div className="card">
             {members.data.map((m) => (
@@ -263,9 +275,9 @@ export default function TeamDetailPage() {
                 </Link>
                 <div style={{ flex: 1 }}>
                   <div className="row" style={{ gap: 6 }}>
-                    <b style={{ fontSize: 14 }}>{m.player?.full_name || 'لاعب'}</b>
+                    <b style={{ fontSize: 13.5 }}>{m.player?.full_name || 'لاعب'}</b>
                     {m.role === 'captain' && <span className="badge dark">🅒 Captain</span>}
-                    {m.player?.is_premium && <span className="badge warn">★ Premium</span>}
+                    {m.player?.is_premium && <span className="badge gold">★ Premium</span>}
                   </div>
                   <div className="tiny">{m.player?.position || ''}{m.player?.jersey_number ? ` • رقم ${m.player.jersey_number}` : ''}</div>
                 </div>
@@ -279,7 +291,7 @@ export default function TeamDetailPage() {
       </div>
 
       <div className="section">
-        <div className="section-head"><h2>🏆 بطولات الفريق</h2></div>
+        <div className="section-head"><h2><Icon name="trophy" size={17} /> بطولات الفريق</h2></div>
         <TeamTournaments teamId={id} />
       </div>
     </Layout>
@@ -300,7 +312,7 @@ function TeamTournaments({ teamId }) {
     },
   })
   if (tts.isLoading) return <Spinner />
-  if (!tts.data?.length) return <Empty icon="🏆" text="لا تشارك هذه البطولات بعد" />
+  if (!tts.data?.length) return <Empty icon="trophy" text="لا تشارك هذه البطولات بعد" />
   return tts.data.map((tt) => (
     <Link key={tt.id} to={`/tournaments/${tt.tournament.id}`} className="card tap">
       <div className="row between">
@@ -312,18 +324,4 @@ function TeamTournaments({ teamId }) {
       <div className="tiny">📍 {tt.tournament.village?.name}</div>
     </Link>
   ))
-}
-
-export function TeamCard({ team }) {
-  return (
-    <Link to={`/teams/${team.id}`} className="card tap">
-      <div className="row">
-        <div className="logo-box">{team.logo_url ? <img src={team.logo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : '⚽'}</div>
-        <div style={{ flex: 1 }}>
-          <div className="card-title">{team.name}</div>
-          <div className="tiny">📍 {team.village?.name || '—'}</div>
-        </div>
-      </div>
-    </Link>
-  )
 }

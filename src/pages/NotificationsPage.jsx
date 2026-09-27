@@ -1,8 +1,17 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import Layout from '../components/Layout'
+import Icon from '../components/Icon'
 import { Spinner, Empty } from '../components/ui'
 import { supabase } from '../lib/supabase'
 import { dateTimeAr } from '../lib/constants'
+
+function notifIcon(type) {
+  if (type === 'booking') return 'calendar'
+  if (type === 'team') return 'users'
+  if (type === 'tournament') return 'trophy'
+  if (type === 'match') return 'ball'
+  return 'bell'
+}
 
 export default function NotificationsPage() {
   const qc = useQueryClient()
@@ -43,15 +52,16 @@ export default function NotificationsPage() {
   })
 
   return (
-    <Layout title="🔔 الإشعارات" headerRight={
+    <Layout title="الإشعارات" titleIcon="bell" headerRight={
       notifications.data?.some((n) => !n.is_read) && (
         <button className="btn sm outline" onClick={() => markAll.mutate()}>تعليم الكل كمقروء</button>
       )
     }>
-      {notifications.isLoading ? <Spinner /> : notifications.data?.length === 0 ? <Empty icon="🔔" text="لا إشعارات بعد" /> : (
+      {notifications.isLoading ? <Spinner /> : notifications.data?.length === 0 ? <Empty icon="bell" text="لا إشعارات بعد" /> : (
         <div className="card">
           {notifications.data.map((n) => (
             <div key={n.id} className={`notif ${n.is_read ? '' : 'unread'}`} onClick={() => !n.is_read && markRead.mutate(n.id)} style={{ cursor: n.is_read ? 'default' : 'pointer' }}>
+              <div className="n-ic"><Icon name={notifIcon(n.type)} size={17} /></div>
               <div style={{ flex: 1 }}>
                 <div className="t">{n.title}</div>
                 {n.body && <div className="b">{n.body}</div>}

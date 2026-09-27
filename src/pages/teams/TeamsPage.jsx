@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import Layout from '../../components/Layout'
+import Icon from '../../components/Icon'
 import { Spinner, Empty } from '../../components/ui'
 import { useVillages, useVillageFilter } from '../../hooks/useVillages'
 import { useAuth } from '../../context/AuthContext'
@@ -30,26 +31,33 @@ export default function TeamsPage() {
   })
 
   return (
-    <Layout title="⚽ الفرق">
-      <input className="input" placeholder="🔍 ابحث عن فريق…" value={search} onChange={(e) => setSearch(e.target.value)} />
-      <div style={{ height: 10 }} />
+    <Layout title="الفرق" titleIcon="ball">
+      <div style={{ position: 'relative', marginBottom: 12 }}>
+        <input className="input" style={{ paddingInlineStart: 42 }} placeholder="ابحث عن فريق…" value={search} onChange={(e) => setSearch(e.target.value)} />
+        <Icon name="search" size={18} style={{ position: 'absolute', top: 13, insetInlineStart: 14, color: 'var(--text-3)' }} />
+      </div>
+
       {useVillageFilter(villages, village, setVillage)}
 
       <div className="btn-row" style={{ marginBottom: 14 }}>
-        {user && <Link to="/teams/create" className="btn">＋ إنشاء فريق</Link>}
-        <Link to="/join/ARENA" className="btn outline">🔑 انضمام بكود دعوة</Link>
+        {user && <Link to="/teams/create" className="btn"><Icon name="plus" size={16} /> إنشاء فريق</Link>}
+        <Link to="/join/ARENA" className="btn outline"><Icon name="users" size={16} /> انضمام بكود دعوة</Link>
       </div>
 
-      {teams.isLoading ? <Spinner /> : teams.data?.length === 0 ? <Empty icon="⚽" text="لا توجد فرق بعد" /> : (
+      {teams.isLoading ? <Spinner /> : teams.data?.length === 0 ? <Empty icon="ball" text="لا توجد فرق بعد" /> : (
         teams.data?.map((t) => (
-          <Link key={t.id} to={`/teams/${t.id}`} className="card tap">
+          <Link key={t.id} to={`/teams/${t.id}`} className="card tap" style={{ padding: 13 }}>
             <div className="row">
-              <div className="logo-box">{t.logo_url ? <img src={t.logo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : '⚽'}</div>
-              <div style={{ flex: 1 }}>
-                <div className="card-title">{t.name}</div>
-                <div className="tiny">📍 {t.village?.name || '—'} • 👥 {t.members?.[0]?.count ?? 0} لاعب</div>
+              <div className="logo-box round" style={{ width: 54, height: 54 }}>
+                {t.logo_url
+                  ? <img src={t.logo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  : <Icon name="shirt" size={24} />}
               </div>
-              <span className="badge neutral">عرض</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="card-title" style={{ fontSize: 14.5 }}>{t.name}</div>
+                <div className="tiny"><Icon name="pin" size={11} /> {t.village?.name || '—'} • <Icon name="users" size={11} /> {t.members?.[0]?.count ?? 0} لاعب</div>
+              </div>
+              <Icon name="chevL" size={17} style={{ color: 'var(--text-3)' }} />
             </div>
           </Link>
         ))
