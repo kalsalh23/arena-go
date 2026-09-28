@@ -138,7 +138,7 @@ function TournamentsTab() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('tournaments')
-        .select('*, venue:venues(name), village:villages(name), owner:profiles(full_name)')
+        .select('*, venue:venues(name), village:villages(name), owner:profiles!tournaments_owner_id_fkey(full_name)')
         .eq('status', 'pending_admin_approval')
         .order('created_at')
       if (error) throw error
@@ -151,7 +151,7 @@ function TournamentsTab() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('tournaments')
-        .select('*, venue:venues(name), village:villages(name), owner:profiles(full_name)')
+        .select('*, venue:venues(name), village:villages(name), owner:profiles!tournaments_owner_id_fkey(full_name)')
         .order('created_at', { ascending: false })
         .limit(60)
       if (error) throw error
@@ -185,11 +185,14 @@ function TournamentsTab() {
     <>
       <ErrorBox>{err}</ErrorBox>
       <OkBox>{ok}</OkBox>
+      {(pending.error || all.error) && (
+        <ErrorBox>تعذر تحميل البطولات: {(pending.error || all.error).message}</ErrorBox>
+      )}
 
       <div className="section" style={{ marginTop: 0 }}>
         <div className="section-head"><h2><Icon name="clock" size={16} /> بانتظار الموافقة ({pending.data?.length ?? 0})</h2></div>
-        {pending.isLoading ? <Spinner /> : pending.data?.length === 0 ? <Empty icon="checkC" text="لا طلبات جديدة" /> : (
-          pending.data.map((t) => (
+        {pending.isLoading ? <Spinner /> : (pending.data ?? []).length === 0 ? <Empty icon="checkC" text="لا طلبات جديدة" /> : (
+          (pending.data ?? []).map((t) => (
             <div key={t.id} className="card">
               <div className="card-title"><Icon name="trophy" size={16} /> {t.name}</div>
               <div className="tiny">🏟️ {t.venue?.name} • 📍 {t.village?.name} • 👤 {t.owner?.full_name}</div>
@@ -221,7 +224,7 @@ function TournamentsTab() {
 
       <div className="section">
         <div className="section-head"><h2><Icon name="trophy" size={16} /> كل البطولات</h2></div>
-        {all.isLoading ? <Spinner /> : all.data.map((t) => (
+        {all.isLoading ? <Spinner /> : (all.data ?? []).map((t) => (
           <div key={t.id} className="card" style={{ padding: 13 }}>
             <div className="row between">
               <div className="card-title" style={{ fontSize: 14.5 }}>{t.name}</div>
@@ -279,7 +282,10 @@ function UsersTab() {
         p_password: password,
       })
       if (error) throw new Error(error.message)
-      return { ...data[0], password }
+      // RPC may return the jsonb object directly or wrapped in an array
+      const d = Array.isArray(data) ? data[0] : data
+      if (!d?.phone) throw new Error('لم يُعد الإنشاء رقم الهاتف — أعد المحاولة')
+      return { ...d, password }
     },
     onSuccess: (d) => {
       setCreated(d)
@@ -292,7 +298,7 @@ function UsersTab() {
 
   const dashboardUrl = typeof location !== 'undefined' ? `${location.origin}/dashboard` : '/dashboard'
   const waText = created
-    ? `أهلاً ${created.full_name} 👋\nتم إنشاء حسابك كصاحب ملعب في منصة Arena Go ⚽\n\n🔗 رابط لوحة التحكم:\n${dashboardUrl}\n\n📱 رقم الهاتف: +${created.phone}\n🔑 كلمة المرور: ${created.password}\n\nبعد الدخول يمكنك إضافة ملاعبك وإدارة الحجوزات والبطولات بالكامل.`
+    ? `أهلاً ${created.full_name} 👋\nتم إنشاء حسابك كصاحب ملعب في منصة Arena Go ⚽\n\n🔗 رابط لوحة التحكم:\n${dashboardUrl}\n\n📱 رقم حسابك للدخول (رقم هاتفك): +${created.phone}\n🔑 كلمة السر: ${created.password}\n\nبعد الدخول يمكنك إضافة ملاعبك وإدارة الحجوزات والبطولات بالكامل.`
     : ''
 
   const filtered = (profiles.data || []).filter((p) =>
@@ -312,7 +318,7 @@ function UsersTab() {
         <div className="card" style={{ background: 'var(--brand-soft)', border: '1.5px dashed var(--brand)', boxShadow: 'none' }}>
           <div className="card-title"><Icon name="checkC" size={17} /> تم إنشاء الحساب — أرسل بيانات الدخول واتساب</div>
           <div className="kv"><span className="k"><Icon name="user" size={14} /> الاسم</span><span className="v">{created.full_name}</span></div>
-          <div className="kv"><span className="k"><Icon name="phone" size={14} /> الهاتف (حسابه)</span><span className="v" dir="ltr">+{created.phone}</span></div>
+          <div className="kv"><span className="k"><Icon name="phone" size={14} /> رقم حسابه للدخول</span><span className="v" dir="ltr">+{created.phone}</span></div>
           <div className="kv"><span className="k"><Icon name="shield" size={14} /> كلمة السر</span><span className="v" dir="ltr">{created.password}</span></div>
           <div className="kv"><span className="k"><Icon name="pin" size={14} /> رابط لوحته</span><span className="v" dir="ltr" style={{ fontSize: 11.5, wordBreak: 'break-all' }}>{dashboardUrl}</span></div>
           <div className="btn-row">
