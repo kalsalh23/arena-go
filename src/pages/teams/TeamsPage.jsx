@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import Layout from '../../components/Layout'
 import Icon from '../../components/Icon'
 import { Spinner, Empty } from '../../components/ui'
-import { useVillages, useVillageFilter } from '../../hooks/useVillages'
+import { useVillages, VillageSelect } from '../../hooks/useVillages'
 import { useAuth } from '../../context/AuthContext'
 import { supabase } from '../../lib/supabase'
 
@@ -37,7 +37,9 @@ export default function TeamsPage() {
         <Icon name="search" size={18} style={{ position: 'absolute', top: 13, insetInlineStart: 14, color: 'var(--text-3)' }} />
       </div>
 
-      {useVillageFilter(villages, village, setVillage)}
+      <div className="filter-row">
+        <VillageSelect villages={villages} value={village} onChange={setVillage} />
+      </div>
 
       <div className="btn-row" style={{ marginBottom: 14 }}>
         {user && <Link to="/teams/create" className="btn"><Icon name="plus" size={16} /> إنشاء فريق</Link>}

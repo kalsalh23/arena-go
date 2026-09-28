@@ -4,16 +4,9 @@ import { useQuery } from '@tanstack/react-query'
 import Layout from '../../components/Layout'
 import Icon from '../../components/Icon'
 import { Spinner, Empty } from '../../components/ui'
-import { useVillages, useVillageFilter } from '../../hooks/useVillages'
+import { useVillages, VillageSelect, ListSelect } from '../../hooks/useVillages'
 import { supabase } from '../../lib/supabase'
 import { TOURNAMENT_TYPE_LABELS, TOURNAMENT_STATUS_LABELS, sypText, dateAr } from '../../lib/constants'
-
-const STATUS_FILTERS = [
-  { key: '', label: 'الكل' },
-  { key: 'open', label: 'مفتوحة للتسجيل' },
-  { key: 'ongoing', label: 'جارية' },
-  { key: 'completed', label: 'منتهية' },
-]
 
 const OPEN_STATUSES = ['registration_open']
 const ACTIVE_STATUSES = ['full', 'draw_pending', 'draw_completed', 'ongoing']
@@ -69,14 +62,18 @@ export default function TournamentsPage() {
         <Icon name="search" size={18} style={{ position: 'absolute', top: 13, insetInlineStart: 14, color: 'var(--text-3)' }} />
       </div>
 
-      {useVillageFilter(villages, village, setVillage)}
-
-      <div className="chips">
-        {STATUS_FILTERS.map((s) => (
-          <button key={s.key} className={`chip ${status === s.key ? 'active' : ''}`} onClick={() => setStatus(s.key)}>
-            {s.label}
-          </button>
-        ))}
+      <div className="filter-row">
+        <VillageSelect villages={villages} value={village} onChange={setVillage} />
+        <ListSelect
+          label="الحالة"
+          value={status}
+          onChange={setStatus}
+          options={[
+            { key: 'open', label: 'مفتوحة للتسجيل' },
+            { key: 'ongoing', label: 'جارية' },
+            { key: 'completed', label: 'منتهية' },
+          ]}
+        />
       </div>
 
       {tournaments.isLoading ? <Spinner /> : tournaments.data?.length === 0 ? <Empty icon="trophy" text="لا توجد بطولات" /> : (

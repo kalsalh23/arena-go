@@ -4,12 +4,11 @@ import { useQuery } from '@tanstack/react-query'
 import Layout from '../../components/Layout'
 import Icon from '../../components/Icon'
 import { Spinner, Empty } from '../../components/ui'
-import { useVillages, useVillageFilter } from '../../hooks/useVillages'
+import { useVillages, VillageSelect, ListSelect } from '../../hooks/useVillages'
 import { supabase } from '../../lib/supabase'
 import { sypText, VENUE_TYPES } from '../../lib/constants'
 
-const TYPE_FILTERS = [
-  { key: '', label: 'الكل' },
+const TYPE_OPTIONS = [
   { key: 'f5', label: '5×5' },
   { key: 'f7', label: '7×7' },
   { key: 'f11', label: '11×11' },
@@ -19,16 +18,14 @@ export default function VenuesPage() {
   const { data: villages } = useVillages()
   const [village, setVillage] = useState('')
   const [type, setType] = useState('')
-  const [maxPrice, setMaxPrice] = useState('')
   const [search, setSearch] = useState('')
 
   const venues = useQuery({
-    queryKey: ['venues', { village, type, maxPrice, search }],
+    queryKey: ['venues', { village, type, search }],
     queryFn: async () => {
       let q = supabase.from('venues').select('*, village:villages(name)').eq('is_active', true)
       if (village) q = q.eq('village_id', village)
       if (type) q = q.eq('venue_type', type)
-      if (maxPrice) q = q.lte('price_per_hour', parseInt(maxPrice, 10))
       if (search) q = q.ilike('name', `%${search}%`)
       q = q.order('rating', { ascending: false })
       const { data, error } = await q
@@ -44,23 +41,9 @@ export default function VenuesPage() {
         <Icon name="search" size={18} style={{ position: 'absolute', top: 13, insetInlineStart: 14, color: 'var(--text-3)' }} />
       </div>
 
-      {useVillageFilter(villages, village, setVillage)}
-
-      <div className="chips">
-        {TYPE_FILTERS.map((t) => (
-          <button key={t.key} className={`chip ${type === t.key ? 'active' : ''}`} onClick={() => setType(t.key)}>
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="card" style={{ padding: '12px 15px' }}>
-        <div className="row between">
-          <label style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--text-2)', margin: 0 }}>
-            <Icon name="money" size={15} /> أقصى سعر للساعة: {maxPrice ? sypText(parseInt(maxPrice, 10)) : 'بدون حد'}
-          </label>
-        </div>
-        <input type="range" min="0" max="5000" step="100" value={maxPrice || 5000} onChange={(e) => setMaxPrice(e.target.value === '5000' ? '' : e.target.value)} style={{ width: '100%', accentColor: 'var(--brand)' }} />
+      <div className="filter-row">
+        <VillageSelect villages={villages} value={village} onChange={setVillage} />
+        <ListSelect label="النوع" value={type} onChange={setType} options={TYPE_OPTIONS} />
       </div>
 
       {venues.isLoading ? <Spinner /> : venues.data?.length === 0 ? (
@@ -92,3 +75,4 @@ export default function VenuesPage() {
     </Layout>
   )
 }
+

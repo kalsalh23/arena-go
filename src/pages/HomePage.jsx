@@ -6,7 +6,7 @@ import HeroCarousel from '../components/HeroCarousel'
 import Icon from '../components/Icon'
 import { Spinner, Empty } from '../components/ui'
 import { useAuth } from '../context/AuthContext'
-import { useVillages } from '../hooks/useVillages'
+import { useVillages, VillageSelect } from '../hooks/useVillages'
 import { supabase } from '../lib/supabase'
 import { sypText, VENUE_TYPES } from '../lib/constants'
 
@@ -56,6 +56,10 @@ export default function HomePage() {
           onChange={(e) => setSearch(e.target.value)}
         />
         <Icon name="search" size={18} style={{ position: 'absolute', top: 13, insetInlineStart: 14, color: 'var(--text-3)' }} />
+      </div>
+
+      <div className="filter-row">
+        <VillageSelect villages={villages} value={village} onChange={setVillage} />
       </div>
 
       <div className="grid-4">

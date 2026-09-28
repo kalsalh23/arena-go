@@ -108,6 +108,7 @@ for (const s of venueSpecs) {
     amenities: ['إضاءة ليلية', 'مدرجات', 'استراحة', 'موقف سيارات'],
     phone: '0999000000', whatsapp: '963999000000',
     shamcash_number: '1200999999', shamcash_name: s.name, shamcash_active: true,
+    shamcash_qr_url: '/demo/qr-shamcash.svg',
     description: 'ملعب تجريبي لأغراض العرض — عشب صناعي عالي الجودة مع إضاءة ليلية كاملة.',
   })
   venueIds.push(v[0].id)

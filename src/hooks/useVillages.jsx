@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
+import Icon from '../components/Icon'
 
 export function useVillages() {
   return useQuery({
@@ -13,17 +14,32 @@ export function useVillages() {
   })
 }
 
-export function useVillageFilter(villages, value, onChange, allLabel = 'كل القرى') {
+// Dropdown list filter (المنطقة) — replaces chip rows.
+export function VillageSelect({ villages, value, onChange, label = 'المنطقة' }) {
   return (
-    <div className="chips">
-      <button className={`chip ${value === '' ? 'active' : ''}`} onClick={() => onChange('')}>
-        {allLabel}
-      </button>
-      {(villages || []).map((v) => (
-        <button key={v.id} className={`chip ${value === v.id ? 'active' : ''}`} onClick={() => onChange(v.id)}>
-          {v.name}
-        </button>
-      ))}
+    <div className="filter-select">
+      <select value={value} onChange={(e) => onChange(e.target.value)} aria-label={label}>
+        <option value="">{label}: الكل</option>
+        {(villages || []).map((v) => (
+          <option key={v.id} value={v.id}>{v.name}</option>
+        ))}
+      </select>
+      <Icon name="chevD" size={15} />
+    </div>
+  )
+}
+
+// Generic dropdown for any filter list (النوع، الحالة…).
+export function ListSelect({ label, value, onChange, options }) {
+  return (
+    <div className="filter-select">
+      <select value={value} onChange={(e) => onChange(e.target.value)} aria-label={label}>
+        <option value="">{label}: الكل</option>
+        {options.map((o) => (
+          <option key={o.key} value={o.key}>{o.label}</option>
+        ))}
+      </select>
+      <Icon name="chevD" size={15} />
     </div>
   )
 }
