@@ -383,8 +383,8 @@ p { margin: 0 0 8px; }
 .kv .v { font-weight: 700; }
 .amount-due { background: linear-gradient(150deg, #17643a, var(--brand-deep)); color: #fff; border-radius: 16px; padding: 15px 18px; font-weight: 800; text-align: center; box-shadow: var(--shadow); }
 .amount-due .am { font-size: 22px; font-weight: 900; display: block; }
-.qr-box { text-align: center; padding: 12px; background: #fff; border: 1.5px dashed var(--brand-soft-2); border-radius: 14px; }
-.qr-box img { width: 150px; height: 150px; object-fit: contain; }
+.qr-box { text-align: center; padding: 0; background: #fff; border: 1.5px solid var(--brand-soft-2); border-radius: 14px; overflow: hidden; }
+.qr-box img { width: 100%; height: 240px; object-fit: cover; display: block; }
 
 /* ---------- Filter selects (list-style) ---------- */
 .filter-row { display: flex; gap: 9px; margin-bottom: 14px; }
