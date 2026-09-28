@@ -40,12 +40,12 @@ export default function AdminDashboard() {
 
 /* ---------------- نظرة عامة ---------------- */
 function OverviewTab({ onGo }) {
-  const count = (table, qs = '') =>
+  const count = (table, filter) =>
     useQuery({
-      queryKey: ['admin-count', table, qs],
+      queryKey: ['admin-count', table, String(filter)],
       queryFn: async () => {
         let q = supabase.from(table).select('id', { count: 'exact', head: true })
-        if (qs) q = q.or(qs)
+        if (filter) q = filter(q)
         const { count: c, error: e } = await q
         if (e) throw e
         return c
@@ -54,12 +54,12 @@ function OverviewTab({ onGo }) {
 
   const users = count('profiles')
   const venues = count('venues')
-  const teams = count('teams', 'is_active=eq.true')
-  const bookings = count('bookings', 'booking_status=in.(pending_review,confirmed)')
-  const pendingT = count('tournaments', 'status=eq.pending_admin_approval')
-  const openT = count('tournaments', 'status=eq.registration_open')
-  const ongoingT = count('tournaments', 'status=in.(full,draw_pending,draw_completed,ongoing)')
-  const doneT = count('tournaments', 'status=eq.completed')
+  const teams = count('teams', (q) => q.eq('is_active', true))
+  const bookings = count('bookings', (q) => q.in('booking_status', ['pending_review', 'confirmed']))
+  const pendingT = count('tournaments', (q) => q.eq('status', 'pending_admin_approval'))
+  const openT = count('tournaments', (q) => q.eq('status', 'registration_open'))
+  const ongoingT = count('tournaments', (q) => q.in('status', ['full', 'draw_pending', 'draw_completed', 'ongoing']))
+  const doneT = count('tournaments', (q) => q.eq('status', 'completed'))
 
   const Stat = ({ n, l, ic, onClick }) => (
     <button className="stat-card" style={{ cursor: onClick ? 'pointer' : 'default', border: 'none' }} onClick={onClick}>
