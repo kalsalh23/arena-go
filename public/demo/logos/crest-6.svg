@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 132">
+<svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice" viewBox="0 0 120 132">
 <defs><linearGradient id="c5" x1="0" y1="0" x2="1" y2="1">
 <stop offset="0" stop-color="#4c1d95"/><stop offset="1" stop-color="#2e1065"/></linearGradient></defs>
 <path d="M60 4 L112 22 V66 C112 96 92 116 60 128 C28 116 8 96 8 66 V22 Z" fill="url(#c5)" stroke="#ffffff" stroke-width="5"/>

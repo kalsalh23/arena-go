@@ -46,7 +46,7 @@ function stripes(n, w, h, key) {
 // ---- Angle 1: aerial full pitch ----
 function aerial(p, key) {
   const w = 800, h = 500
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}">${defs(p, key)}
+  return `<svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice" viewBox="0 0 ${w} ${h}">${defs(p, key)}
 <rect width="${w}" height="${h}" fill="url(#gr${key})"/>
 ${stripes(10, w, h, key)}
 <g fill="none" stroke="${p.line}" stroke-width="3">
@@ -68,7 +68,7 @@ ${stripes(10, w, h, key)}
 // ---- Angle 2: corner perspective ----
 function corner(p, key) {
   const w = 800, h = 500
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}">${defs(p, key)}
+  return `<svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice" viewBox="0 0 ${w} ${h}">${defs(p, key)}
 <rect width="${w}" height="150" fill="url(#sky${key})"/>
 <circle cx="660" cy="70" r="34" fill="rgba(255,250,210,0.9)"/>
 <rect y="140" width="${w}" height="${h - 140}" fill="url(#gr${key})"/>
@@ -89,7 +89,7 @@ function goal(p, key) {
   let net = ''
   for (let x = 120; x <= 680; x += 40) net += `<line x1="${x}" y1="80" x2="${x}" y2="360"/>`
   for (let y = 80; y <= 360; y += 40) net += `<line x1="120" y1="${y}" x2="680" y2="${y}"/>`
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}">${defs(p, key)}
+  return `<svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice" viewBox="0 0 ${w} ${h}">${defs(p, key)}
 <rect width="${w}" height="${h}" fill="url(#gr${key})"/>
 ${stripes(8, w, h, key)}
 <rect x="100" y="60" width="600" height="310" rx="8" fill="rgba(255,255,255,0.06)" stroke="${p.line}" stroke-width="10"/>
@@ -111,7 +111,7 @@ function stands(p, key) {
       seats += `<rect x="${20 + i * 30}" y="${120 + row * 26}" width="22" height="16" rx="3" fill="${c}" opacity="0.85"/>`
     }
   }
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}">${defs(p, key)}
+  return `<svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice" viewBox="0 0 ${w} ${h}">${defs(p, key)}
 <rect width="${w}" height="360" fill="url(#sky${key})"/>
 <rect width="${w}" height="40" fill="rgba(255,255,255,0.25)"/>
 ${seats}
@@ -126,7 +126,7 @@ ${seats}
 function night(p, key) {
   const w = 800, h = 500
   const pn = { ...p, line: 'rgba(215,255,230,0.85)' }
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}">${defs(pn, key + 'n')}
+  return `<svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice" viewBox="0 0 ${w} ${h}">${defs(pn, key + 'n')}
 <rect width="${w}" height="${h}" fill="#0c1f16"/>
 <rect y="0" width="${w}" height="90" fill="url(#sky${key}n)"/>
 <circle cx="150" cy="46" r="3" fill="#fff" opacity="0.8"/><circle cx="320" cy="30" r="2.5" fill="#fff" opacity="0.7"/><circle cx="520" cy="52" r="3" fill="#fff" opacity="0.8"/><circle cx="680" cy="34" r="2.5" fill="#fff" opacity="0.7"/>
@@ -155,7 +155,7 @@ function floodlight(x, y, key, s = 1) {
 function crest(i) {
   const c1 = ['#0e7a43', '#14532d', '#b45309', '#1d4ed8', '#9f1239', '#4c1d95'][i % 6]
   const c2 = ['#0c241a', '#052e16', '#78350f', '#1e3a8a', '#881337', '#2e1065'][i % 6]
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 132">
+  return `<svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice" viewBox="0 0 120 132">
 <defs><linearGradient id="c${i}" x1="0" y1="0" x2="1" y2="1">
 <stop offset="0" stop-color="${c1}"/><stop offset="1" stop-color="${c2}"/></linearGradient></defs>
 <path d="M60 4 L112 22 V66 C112 96 92 116 60 128 C28 116 8 96 8 66 V22 Z" fill="url(#c${i})" stroke="#ffffff" stroke-width="5"/>
