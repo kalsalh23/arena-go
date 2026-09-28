@@ -2,6 +2,7 @@ import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
 import { Spinner } from './components/ui'
 import Splash from './components/Splash'
+import ScrollToTop from './components/ScrollToTop'
 
 import AuthPage from './pages/auth/AuthPage'
 import HomePage from './pages/HomePage'
@@ -38,6 +39,7 @@ export default function App() {
   return (
     <>
       <Splash />
+      <ScrollToTop />
       <Routes>
       <Route path="/auth" element={<AuthPage />} />
 

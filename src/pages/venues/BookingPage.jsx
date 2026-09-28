@@ -62,6 +62,20 @@ export default function BookingPage() {
     return out
   }, [venue.data])
 
+  // شريط الأيام: 7 أيام قادمة (اليوم، غداً، ثم أسماء الأيام)
+  const days = useMemo(() => {
+    const pad = (n) => String(n).padStart(2, '0')
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date()
+      d.setDate(d.getDate() + i)
+      return {
+        iso: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
+        num: d.getDate(),
+        label: i === 0 ? 'اليوم' : i === 1 ? 'غداً' : d.toLocaleDateString('ar-SY', { weekday: 'long' }),
+      }
+    })
+  }, [])
+
   const isTaken = (t) => {
     const s = t
     const e = t + SLOT_MINUTES
@@ -136,34 +150,45 @@ export default function BookingPage() {
 
       {step === 1 && (
         <>
+          {/* شريط الأيام — حبوب دائرية: اليوم، غداً، ثم الأيام القادمة */}
+          <div className="day-strip">
+            {days.map((d) => {
+              const sel = date === d.iso
+              return (
+                <button key={d.iso} className={`day-pill ${sel ? 'sel' : ''}`} onClick={() => { setDate(d.iso); setStart('') }}>
+                  <span className="dl">{d.label}</span>
+                  <span className="dn">{d.num}</span>
+                </button>
+              )
+            })}
+          </div>
+
+          {/* الأوقات المتاحة */}
           <div className="card">
-            <div className="field">
-              <label><Icon name="calendar" size={14} /> التاريخ</label>
-              <input type="date" className="input" min={new Date().toISOString().slice(0, 10)} value={date} onChange={(e) => { setDate(e.target.value); setStart('') }} />
+            <div className="row between" style={{ marginBottom: 12 }}>
+              <div className="card-title"><Icon name="clock" size={16} /> الأوقات المتاحة</div>
+              <span className="badge success">{slots.filter((t) => !isTaken(t)).length} أوقات متاحة</span>
             </div>
-            <div className="field mb0">
-              <label><Icon name="clock" size={14} /> أوقات اليوم المتاحة — كل حجز ساعة ونصف</label>
-              <div className="hint" style={{ marginTop: -6, marginBottom: 8 }}>يوجد فاصل 10 دقائق إلزامي بين الحجوزات</div>
-              {taken.isLoading ? <Spinner /> : (
-                <div className="chips" style={{ marginBottom: 0 }}>
-                  {slots.map((t) => {
-                    const label = fmt(t)
-                    const takenSlot = isTaken(t)
-                    return (
-                      <button
-                        key={t}
-                        disabled={takenSlot}
-                        className={`chip ${start === label ? 'active' : ''}`}
-                        style={takenSlot ? { opacity: 0.35, textDecoration: 'line-through' } : undefined}
-                        onClick={() => setStart(label)}
-                      >
-                        {label} – {fmt(t + SLOT_MINUTES)}
-                      </button>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
+            <div className="hint" style={{ marginTop: -6, marginBottom: 10 }}>كل حجز ساعة ونصف — بين الحجوزات فاصل 10 دقائق</div>
+            {taken.isLoading ? <Spinner /> : (
+              <div className="time-grid">
+                {slots.map((t) => {
+                  const takenSlot = isTaken(t)
+                  const sel = start === fmt(t)
+                  return (
+                    <button
+                      key={t}
+                      disabled={takenSlot}
+                      className={`time-chip ${sel ? 'sel' : ''}`}
+                      style={takenSlot ? { opacity: 0.35, textDecoration: 'line-through' } : undefined}
+                      onClick={() => setStart(fmt(t))}
+                    >
+                      {fmt(t)}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
           </div>
 
           <div className="card">

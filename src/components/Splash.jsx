@@ -7,8 +7,8 @@ export default function Splash() {
   const [gone, setGone] = useState(false)
 
   useEffect(() => {
-    const t1 = setTimeout(() => setLeaving(true), 2600)
-    const t2 = setTimeout(() => setGone(true), 3150)
+    const t1 = setTimeout(() => setLeaving(true), 4500)
+    const t2 = setTimeout(() => setGone(true), 5100)
     return () => { clearTimeout(t1); clearTimeout(t2) }
   }, [])
 

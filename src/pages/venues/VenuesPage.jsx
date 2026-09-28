@@ -7,6 +7,7 @@ import { Spinner, Empty } from '../../components/ui'
 import { useVillages, VillageSelect, ListSelect } from '../../hooks/useVillages'
 import { supabase } from '../../lib/supabase'
 import { sypText, VENUE_TYPES } from '../../lib/constants'
+import { accentFor } from '../../lib/accents'
 
 const TYPE_OPTIONS = [
   { key: 'f5', label: '5×5' },
@@ -49,31 +50,35 @@ export default function VenuesPage() {
       {venues.isLoading ? <Spinner /> : venues.data?.length === 0 ? (
         <Empty icon="building" text="لا توجد ملاعب مطابقة" />
       ) : (
-        venues.data?.map((v) => (
-          <Link key={v.id} to={`/venues/${v.id}`} className="card tap" style={{ padding: 0, overflow: 'hidden' }}>
+        venues.data?.map((v) => {
+          const acc = accentFor(v.id)
+          return (
+          <Link key={v.id} to={`/venues/${v.id}`} className="card tap" style={{ padding: 0, overflow: 'hidden', borderColor: acc.soft }}>
             <div style={{ position: 'relative' }}>
+              <div style={{ height: 4, background: `linear-gradient(90deg, ${acc.main}, ${acc.main}88)` }} />
               {v.images?.[0] ? (
                 <img src={v.images[0]} alt={v.name} style={{ width: '100%', height: 150, objectFit: 'cover', display: 'block' }} />
               ) : (
                 <div className="hero-bg" style={{ height: 110, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}><Icon name="image" size={34} /></div>
               )}
-              <div className="img-chip" style={{ top: 10, insetInlineStart: 10 }}>{VENUE_TYPES[v.venue_type]}</div>
+              <div className="img-chip" style={{ top: 14, insetInlineStart: 10, background: acc.main }}>{VENUE_TYPES[v.venue_type]}</div>
             </div>
             <div style={{ padding: '11px 14px 13px' }}>
               <div className="row between" style={{ gap: 8 }}>
                 <b style={{ fontSize: 15.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.name}</b>
-                {v.rating > 0 && <span className="badge success" style={{ flexShrink: 0 }}><Icon name="star" size={11} /> {v.rating}</span>}
+                {v.rating > 0 && <span className="badge success" style={{ flexShrink: 0, background: acc.soft, color: acc.main }}><Icon name="star" size={11} /> {v.rating}</span>}
               </div>
               <div className="tiny" style={{ margin: '3px 0 8px' }}>
                 <Icon name="pin" size={11} /> {v.village?.name}
               </div>
               <div className="row between">
-                <span className="price" style={{ fontSize: 14.5 }}>{sypText(v.price_per_hour)}<span className="tiny" style={{ fontWeight: 600 }}> / ساعة</span></span>
-                <span className="btn sm" style={{ pointerEvents: 'none' }}><Icon name="calendar" size={13} /> احجز</span>
+                <span className="price" style={{ fontSize: 14.5, color: acc.main }}>{sypText(v.price_per_hour)}<span className="tiny" style={{ fontWeight: 600 }}> / ساعة</span></span>
+                <span className="btn sm" style={{ pointerEvents: 'none', background: acc.main, boxShadow: 'none' }}><Icon name="calendar" size={13} /> احجز</span>
               </div>
             </div>
           </Link>
-        ))
+          )
+        })
       )}
     </Layout>
   )

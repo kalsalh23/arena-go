@@ -7,6 +7,7 @@ import { Spinner, Empty, ErrorBox } from '../../components/ui'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import { sypText, VENUE_TYPES, timeAr } from '../../lib/constants'
+import { accentFor } from '../../lib/accents'
 
 const DEPOSIT_UNITS = 1000 // عربون ثابت: 100,000 ل.س
 
@@ -63,6 +64,7 @@ export default function VenueDetailPage() {
   const v = venue.data
   const images = v.images?.length ? v.images : null
   const isOwner = profile?.id === v.owner_id
+  const acc = accentFor(v.id)
 
   return (
     <Layout title={v.name} titleIcon="building">

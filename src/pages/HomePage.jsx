@@ -9,6 +9,7 @@ import { useAuth } from '../context/AuthContext'
 import { useVillages, VillageSelect } from '../hooks/useVillages'
 import { supabase } from '../lib/supabase'
 import { sypText, VENUE_TYPES } from '../lib/constants'
+import { accentFor } from '../lib/accents'
 
 export default function HomePage() {
   const { user, profile } = useAuth()
@@ -87,28 +88,32 @@ export default function HomePage() {
           <Link to="/venues" className="see-all">الكل ›</Link>
         </div>
         {venues.isLoading ? <Spinner /> : venues.data?.length === 0 ? <Empty icon="building" text="لا توجد ملاعب بعد" /> : (
-          venues.data?.map((v) => (
-            <Link key={v.id} to={`/venues/${v.id}`} className="card tap" style={{ padding: 0, overflow: 'hidden' }}>
+          venues.data?.map((v) => {
+            const acc = accentFor(v.id)
+            return (
+            <Link key={v.id} to={`/venues/${v.id}`} className="card tap" style={{ padding: 0, overflow: 'hidden', borderColor: acc.soft }}>
               <div style={{ position: 'relative' }}>
+                <div style={{ height: 4, background: `linear-gradient(90deg, ${acc.main}, ${acc.main}88)` }} />
                 {v.images?.[0] ? (
                   <img src={v.images[0]} alt={v.name} style={{ width: '100%', height: 140, objectFit: 'cover', display: 'block' }} />
                 ) : (
                   <div className="hero-bg" style={{ height: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}><Icon name="image" size={30} /></div>
                 )}
-                <div className="img-chip" style={{ top: 10, insetInlineStart: 10 }}>{VENUE_TYPES[v.venue_type]}</div>
+                <div className="img-chip" style={{ top: 14, insetInlineStart: 10, background: acc.main }}>{VENUE_TYPES[v.venue_type]}</div>
               </div>
               <div style={{ padding: '10px 14px 12px' }}>
                 <div className="row between" style={{ gap: 8 }}>
                   <b style={{ fontSize: 15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.name}</b>
-                  {v.rating > 0 && <span className="badge success" style={{ flexShrink: 0 }}><Icon name="star" size={11} /> {v.rating}</span>}
+                  {v.rating > 0 && <span className="badge success" style={{ flexShrink: 0, background: acc.soft, color: acc.main }}><Icon name="star" size={11} /> {v.rating}</span>}
                 </div>
                 <div className="row between" style={{ marginTop: 6 }}>
                   <span className="tiny"><Icon name="pin" size={11} /> {v.village?.name}</span>
-                  <span className="price" style={{ fontSize: 14 }}>{sypText(v.price_per_hour)}<span className="tiny" style={{ fontWeight: 600 }}> / ساعة</span></span>
+                  <span className="price" style={{ fontSize: 14, color: acc.main }}>{sypText(v.price_per_hour)}<span className="tiny" style={{ fontWeight: 600 }}> / ساعة</span></span>
                 </div>
               </div>
             </Link>
-          ))
+            )
+          })
         )}
       </div>
 
