@@ -66,7 +66,6 @@ export default function VenuesPage() {
             <div style={{ padding: '11px 14px 13px' }}>
               <div className="row between" style={{ gap: 8 }}>
                 <b style={{ fontSize: 15.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.name}</b>
-                {v.rating > 0 && <span className="badge success" style={{ flexShrink: 0, background: acc.soft, color: acc.main }}><Icon name="star" size={11} /> {v.rating}</span>}
               </div>
               <div className="tiny" style={{ margin: '3px 0 8px' }}>
                 <Icon name="pin" size={11} /> {v.village?.name}

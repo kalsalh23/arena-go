@@ -104,7 +104,6 @@ export default function HomePage() {
               <div style={{ padding: '10px 14px 12px' }}>
                 <div className="row between" style={{ gap: 8 }}>
                   <b style={{ fontSize: 15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.name}</b>
-                  {v.rating > 0 && <span className="badge success" style={{ flexShrink: 0, background: acc.soft, color: acc.main }}><Icon name="star" size={11} /> {v.rating}</span>}
                 </div>
                 <div className="row between" style={{ marginTop: 6 }}>
                   <span className="tiny"><Icon name="pin" size={11} /> {v.village?.name}</span>

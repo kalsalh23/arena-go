@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import Layout from '../../components/Layout'
 import Icon from '../../components/Icon'
-import { Spinner, Empty, ErrorBox } from '../../components/ui'
+import { Spinner, Empty } from '../../components/ui'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import { sypText, VENUE_TYPES, timeAr } from '../../lib/constants'
@@ -14,11 +14,7 @@ const DEPOSIT_UNITS = 1000 // عربون ثابت: 100,000 ل.س
 export default function VenueDetailPage() {
   const { id } = useParams()
   const { user, profile } = useAuth()
-  const qc = useQueryClient()
   const [photo, setPhoto] = useState(0)
-  const [myRating, setMyRating] = useState(5)
-  const [myComment, setMyComment] = useState('')
-  const [err, setErr] = useState('')
 
   const venue = useQuery({
     queryKey: ['venue', id],
@@ -27,35 +23,6 @@ export default function VenueDetailPage() {
       if (error) throw error
       return data
     },
-  })
-
-  const reviews = useQuery({
-    queryKey: ['venue-reviews', id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('venue_reviews')
-        .select('*, user:profiles(full_name, avatar_url)')
-        .eq('venue_id', id)
-        .order('created_at', { ascending: false })
-        .limit(20)
-      if (error) throw error
-      return data
-    },
-  })
-
-  const addReview = useMutation({
-    mutationFn: async () => {
-      const { error } = await supabase.from('venue_reviews').upsert({
-        venue_id: id, user_id: user.id, rating: myRating, comment: myComment,
-      })
-      if (error) throw error
-    },
-    onSuccess: () => {
-      setMyComment('')
-      qc.invalidateQueries({ queryKey: ['venue-reviews', id] })
-      qc.invalidateQueries({ queryKey: ['venue', id] })
-    },
-    onError: (e) => setErr(e.message),
   })
 
   if (venue.isLoading) return <Layout title="الملعب"><Spinner /></Layout>
@@ -108,7 +75,6 @@ export default function VenueDetailPage() {
       <div className="card">
         <div className="row between wrap">
           <h2 style={{ fontSize: 18.5, margin: 0 }}>{v.name}</h2>
-          {v.rating > 0 && <span className="badge success"><Icon name="star" size={12} /> {v.rating} ({v.ratings_count})</span>}
         </div>
         <div className="tiny" style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 3 }}>
           <Icon name="pin" size={13} /> {v.village?.name}{v.address ? ` — ${v.address}` : ''}
@@ -151,41 +117,6 @@ export default function VenueDetailPage() {
         <Link to={`/venues/${id}/book`} className="btn block lg"><Icon name="calendar" size={18} /> احجز الآن</Link>
       )}
       {isOwner && <Link to="/dashboard" className="btn secondary block"><Icon name="sliders" size={17} /> إدارة ملعبك من لوحة التحكم</Link>}
-
-      {/* التقييمات */}
-      <div className="section">
-        <div className="section-head"><h2><Icon name="star" size={17} /> التقييمات</h2></div>
-        {user && (
-          <div className="card">
-            <div className="chips" style={{ marginBottom: 8 }}>
-              {[1, 2, 3, 4, 5].map((n) => (
-                <button key={n} className={`chip ${myRating === n ? 'active' : ''}`} onClick={() => setMyRating(n)}><Icon name="star" size={12} /> {n}</button>
-              ))}
-            </div>
-            <textarea className="textarea" style={{ minHeight: 58 }} placeholder="شاركنا رأيك بالملعب…" value={myComment} onChange={(e) => setMyComment(e.target.value)} />
-            <ErrorBox>{err}</ErrorBox>
-            <button className="btn sm mt8" onClick={() => addReview.mutate()} disabled={addReview.isPending}>
-              <Icon name="send" size={14} /> {addReview.isPending ? 'جارٍ الإرسال…' : 'إرسال التقييم'}
-            </button>
-          </div>
-        )}
-        {reviews.isLoading ? <Spinner /> : reviews.data?.length === 0 ? <Empty icon="star" text="لا توجد تقييمات بعد" /> : (
-          <div className="card">
-            {reviews.data.map((r) => (
-              <div key={r.id} className="list-item">
-                <div className="avatar">{(r.user?.full_name || '؟').charAt(0)}</div>
-                <div style={{ flex: 1 }}>
-                  <div className="row between">
-                    <b style={{ fontSize: 13.5 }}>{r.user?.full_name || 'لاعب'}</b>
-                    <span className="badge success"><Icon name="star" size={11} /> {r.rating}</span>
-                  </div>
-                  {r.comment && <div className="tiny" style={{ color: 'var(--text-2)' }}>{r.comment}</div>}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
     </Layout>
   )
 }
