@@ -50,23 +50,26 @@ export default function VenuesPage() {
         <Empty icon="building" text="لا توجد ملاعب مطابقة" />
       ) : (
         venues.data?.map((v) => (
-          <Link key={v.id} to={`/venues/${v.id}`} className="card tap" style={{ padding: 12 }}>
-            <div className="venue-row">
-              {v.images?.[0]
-                ? <img className="thumb" src={v.images[0]} alt={v.name} />
-                : <div className="thumb" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--brand)' }}><Icon name="image" size={26} /></div>}
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div className="row between">
-                  <div className="card-title" style={{ fontSize: 14.5 }}>{v.name}</div>
-                  {v.rating > 0 && <span className="badge success"><Icon name="star" size={11} /> {v.rating}</span>}
-                </div>
-                <div className="tiny" style={{ margin: '3px 0 6px' }}>
-                  {VENUE_TYPES[v.venue_type]} • <Icon name="pin" size={11} /> {v.village?.name}
-                </div>
-                <div className="row between">
-                  <span className="price" style={{ fontSize: 14 }}>{sypText(v.price_per_hour)}<span className="tiny" style={{ fontWeight: 600 }}> / ساعة</span></span>
-                  <span className="badge dark">احجز</span>
-                </div>
+          <Link key={v.id} to={`/venues/${v.id}`} className="card tap" style={{ padding: 0, overflow: 'hidden' }}>
+            <div style={{ position: 'relative' }}>
+              {v.images?.[0] ? (
+                <img src={v.images[0]} alt={v.name} style={{ width: '100%', height: 150, objectFit: 'cover', display: 'block' }} />
+              ) : (
+                <div className="hero-bg" style={{ height: 110, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}><Icon name="image" size={34} /></div>
+              )}
+              <div className="img-chip" style={{ top: 10, insetInlineStart: 10 }}>{VENUE_TYPES[v.venue_type]}</div>
+            </div>
+            <div style={{ padding: '11px 14px 13px' }}>
+              <div className="row between" style={{ gap: 8 }}>
+                <b style={{ fontSize: 15.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.name}</b>
+                {v.rating > 0 && <span className="badge success" style={{ flexShrink: 0 }}><Icon name="star" size={11} /> {v.rating}</span>}
+              </div>
+              <div className="tiny" style={{ margin: '3px 0 8px' }}>
+                <Icon name="pin" size={11} /> {v.village?.name}
+              </div>
+              <div className="row between">
+                <span className="price" style={{ fontSize: 14.5 }}>{sypText(v.price_per_hour)}<span className="tiny" style={{ fontWeight: 600 }}> / ساعة</span></span>
+                <span className="btn sm" style={{ pointerEvents: 'none' }}><Icon name="calendar" size={13} /> احجز</span>
               </div>
             </div>
           </Link>

@@ -93,18 +93,18 @@ const V = (n) => villages.find((v) => v.name === n).id
 
 console.log('— venues —')
 const venueSpecs = [
-  { name: 'ملعب النخبة الإمام', village: 'طيبة الإمام', type: 'f11', price: 1500, img: '/demo/venue-1.svg', rating: 4.8, rc: 34 },
-  { name: 'ملعب الشهيد محمد', village: 'طيبة الإمام', type: 'f7', price: 1000, img: '/demo/venue-2.svg', rating: 4.6, rc: 21 },
-  { name: 'ملعب السلام', village: 'صوران', type: 'f5', price: 600, img: '/demo/venue-3.svg', rating: 4.4, rc: 17 },
-  { name: 'ملعب الفيصل', village: 'صوران', type: 'f7', price: 1000, img: '/demo/venue-4.svg', rating: 4.5, rc: 25 },
-  { name: 'ملعب النور', village: 'كفرنبودة', type: 'f5', price: 600, img: '/demo/venue-5.svg', rating: 4.2, rc: 9 },
+  { name: 'ملعب النخبة الإمام', village: 'طيبة الإمام', type: 'f11', price: 1500, ph: 'v0', rating: 4.8, rc: 34 },
+  { name: 'ملعب الشهيد محمد', village: 'طيبة الإمام', type: 'f7', price: 1000, ph: 'v1', rating: 4.6, rc: 21 },
+  { name: 'ملعب السلام', village: 'صوران', type: 'f5', price: 600, ph: 'v2', rating: 4.4, rc: 17 },
+  { name: 'ملعب الفيصل', village: 'صوران', type: 'f7', price: 1000, ph: 'v3', rating: 4.5, rc: 25 },
+  { name: 'ملعب النور', village: 'كفرنبودة', type: 'f5', price: 600, ph: 'v4', rating: 4.2, rc: 9 },
 ]
 const venueIds = []
 for (const s of venueSpecs) {
   const v = await rest('venues', '?select=id', owner.token, 'POST', {
     owner_id: owner.id, name: s.name, village_id: V(s.village), venue_type: s.type,
     price_per_hour: s.price, deposit_percent: 20, open_time: '08:00:00', close_time: '23:00:00',
-    images: [s.img], rating: s.rating, ratings_count: s.rc,
+    images: [1, 2, 3, 4, 5].map((i) => `/demo/ph/${s.ph}-${i}.svg`), rating: s.rating, ratings_count: s.rc,
     amenities: ['إضاءة ليلية', 'مدرجات', 'استراحة', 'موقف سيارات'],
     phone: '0999000000', whatsapp: '963999000000',
     shamcash_number: '0b4b947393d6210a44fa022ab37107c9', shamcash_name: 'حكومات مدينة الخالد', shamcash_active: true,
@@ -116,10 +116,10 @@ for (const s of venueSpecs) {
 
 console.log('— teams —')
 const teamSpecs = [
-  { name: 'فريق الأبطال', village: 'طيبة الإمام', captain: 0, members: [0, 1], logo: '/demo/team-1.svg' },
-  { name: 'فريق الشباب', village: 'صوران', captain: 1, members: [2, 3], logo: '/demo/team-2.svg' },
-  { name: 'فريق الاتحاد', village: 'كفرنبودة', captain: 2, members: [4, 5], logo: '/demo/team-3.svg' },
-  { name: 'فريق المدينة', village: 'طيبة الإمام', captain: 3, members: [6, 7], logo: '/demo/team-4.svg' },
+  { name: 'فريق الأبطال', village: 'طيبة الإمام', captain: 0, members: [0, 1], logo: '/demo/logos/crest-1.svg' },
+  { name: 'فريق الشباب', village: 'صوران', captain: 1, members: [2, 3], logo: '/demo/logos/crest-2.svg' },
+  { name: 'فريق الاتحاد', village: 'كفرنبودة', captain: 2, members: [4, 5], logo: '/demo/logos/crest-3.svg' },
+  { name: 'فريق المدينة', village: 'طيبة الإمام', captain: 3, members: [6, 7], logo: '/demo/logos/crest-4.svg' },
 ]
 const teamIds = []
 for (const s of teamSpecs) {

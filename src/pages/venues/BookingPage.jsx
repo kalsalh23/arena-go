@@ -9,6 +9,7 @@ import { sypText } from '../../lib/constants'
 
 const SLOT_MINUTES = 90 // مدة الحجز الثابتة: ساعة ونصف
 const GAP_MINUTES = 10  // فاصل إلزامي بين حجز وآخر
+const DEPOSIT_UNITS = 1000 // العربون الثابت: 100,000 ل.س
 
 const toMin = (t) => {
   const [h, m] = String(t).split(':').map(Number)
@@ -72,9 +73,9 @@ export default function BookingPage() {
     })
   }
 
-  // السعر على أساس ساعة ونصف
+  // السعر على أساس ساعة ونصف — العربون ثابت 100,000 ل.س
   const fullPrice = venue.data ? Math.round(venue.data.price_per_hour * 1.5) : 0
-  const deposit = venue.data ? Math.floor((fullPrice * venue.data.deposit_percent) / 100) : 0
+  const deposit = Math.min(DEPOSIT_UNITS, fullPrice)
 
   const createBooking = useMutation({
     mutationFn: async () => {
@@ -168,7 +169,7 @@ export default function BookingPage() {
           <div className="card">
             <div className="kv"><span className="k"><Icon name="clock" size={15} /> مدة الحجز</span><span className="v">ساعة ونصف (ثابتة)</span></div>
             <div className="kv"><span className="k"><Icon name="money" size={15} /> السعر الكامل</span><span className="v">{sypText(fullPrice)}</span></div>
-            <div className="kv"><span className="k"><Icon name="card" size={15} /> العربون (يُدفع الآن)</span><span className="v price">{sypText(deposit)}</span></div>
+            <div className="kv"><span className="k"><Icon name="card" size={15} /> العربون (ثابت 100,000 ل.س)</span><span className="v price">{sypText(deposit)}</span></div>
             <div className="kv"><span className="k"><Icon name="money" size={15} /> المتبقي على الملعب</span><span className="v">{sypText(fullPrice - deposit)}</span></div>
           </div>
 

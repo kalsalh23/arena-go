@@ -8,10 +8,13 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import { sypText, VENUE_TYPES, timeAr } from '../../lib/constants'
 
+const DEPOSIT_UNITS = 1000 // عربون ثابت: 100,000 ل.س
+
 export default function VenueDetailPage() {
   const { id } = useParams()
   const { user, profile } = useAuth()
   const qc = useQueryClient()
+  const [photo, setPhoto] = useState(0)
   const [myRating, setMyRating] = useState(5)
   const [myComment, setMyComment] = useState('')
   const [err, setErr] = useState('')
@@ -58,77 +61,96 @@ export default function VenueDetailPage() {
   if (!venue.data) return <Layout title="الملعب"><Empty icon="building" text="الملعب غير موجود" /></Layout>
 
   const v = venue.data
+  const images = v.images?.length ? v.images : null
   const isOwner = profile?.id === v.owner_id
 
   return (
     <Layout title={v.name} titleIcon="building">
+      {/* معرض الصور */}
       <div className="card" style={{ padding: 0, overflow: 'hidden', marginBottom: 12 }}>
         <div style={{ position: 'relative' }}>
-          {v.images?.[0] ? (
-            <img src={v.images[0]} alt={v.name} style={{ width: '100%', height: 210, objectFit: 'cover', display: 'block' }} />
+          {images ? (
+            <img src={images[photo]} alt={v.name} style={{ width: '100%', height: 230, objectFit: 'cover', display: 'block' }} />
           ) : (
-            <div className="hero-bg" style={{ height: 120 }} />
+            <div className="hero-bg" style={{ height: 140, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
+              <Icon name="image" size={40} />
+            </div>
           )}
           <div className="img-chip" style={{ top: 12 }}>{VENUE_TYPES[v.venue_type]}</div>
-          {v.rating > 0 && (
-            <div className="img-chip gold" style={{ top: 12, insetInlineStart: 'auto', insetInlineEnd: 12 }}>
-              <Icon name="star" size={11} /> {v.rating} ({v.ratings_count})
+          {images?.length > 1 && (
+            <div className="img-chip" style={{ top: 12, insetInlineStart: 'auto', insetInlineEnd: 12 }}>
+              {photo + 1} / {images.length}
             </div>
           )}
         </div>
-        <div style={{ padding: 15 }}>
-          <h2 style={{ fontSize: 18 }}>{v.name}</h2>
-          <div className="tiny" style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 10 }}>
-            <Icon name="pin" size={13} /> {v.village?.name}{v.address ? ` — ${v.address}` : ''}
+        {images?.length > 1 && (
+          <div className="chips" style={{ padding: 10, marginBottom: 0, justifyContent: 'center' }}>
+            {images.map((u, i) => (
+              <button
+                key={u}
+                onClick={() => setPhoto(i)}
+                style={{
+                  flex: 0, width: 58, height: 44, borderRadius: 9, overflow: 'hidden',
+                  border: photo === i ? '2.5px solid var(--brand)' : '2px solid var(--border)',
+                  padding: 0, cursor: 'pointer', background: 'var(--surface-2)',
+                }}
+              >
+                <img src={u} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              </button>
+            ))}
           </div>
-          {v.description && <p className="muted" style={{ fontSize: 13 }}>{v.description}</p>}
+        )}
+      </div>
 
-          <div className="grid-2" style={{ marginTop: 12 }}>
-            <div className="stat-card">
-              <div className="num" style={{ fontSize: 15 }}>{sypText(v.price_per_hour)}</div>
-              <div className="lbl">السعر / ساعة</div>
-            </div>
-            <div className="stat-card">
-              <div className="num" style={{ fontSize: 15 }}>{sypText(Math.round(v.price_per_hour * v.deposit_percent / 100))}</div>
-              <div className="lbl">العربون ({v.deposit_percent}%)</div>
-            </div>
+      {/* الاسم والمعلومات المهمة */}
+      <div className="card">
+        <div className="row between wrap">
+          <h2 style={{ fontSize: 18.5, margin: 0 }}>{v.name}</h2>
+          {v.rating > 0 && <span className="badge success"><Icon name="star" size={12} /> {v.rating} ({v.ratings_count})</span>}
+        </div>
+        <div className="tiny" style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 3 }}>
+          <Icon name="pin" size={13} /> {v.village?.name}{v.address ? ` — ${v.address}` : ''}
+        </div>
+
+        <div className="grid-2" style={{ marginTop: 13 }}>
+          <div className="stat-card">
+            <div className="num" style={{ fontSize: 15 }}>{sypText(v.price_per_hour)}</div>
+            <div className="lbl">سعر الساعة</div>
           </div>
-
-          <div style={{ marginTop: 10 }}>
-            <div className="kv"><span className="k"><Icon name="clock" size={15} /> أوقات العمل</span><span className="v">{timeAr(v.open_time)} — {timeAr(v.close_time)}</span></div>
-            {v.phone && <div className="kv"><span className="k"><Icon name="phone" size={15} /> هاتف</span><span className="v" dir="ltr">{v.phone}</span></div>}
-            {v.whatsapp && (
-              <div className="kv">
-                <span className="k"><Icon name="whatsapp" size={15} /> واتساب</span>
-                <a className="btn sm secondary" href={`https://wa.me/${v.whatsapp.replace(/\D/g, '')}`} target="_blank" rel="noreferrer">تواصل</a>
-              </div>
-            )}
+          <div className="stat-card">
+            <div className="num" style={{ fontSize: 15 }}>{sypText(Math.min(DEPOSIT_UNITS, v.price_per_hour * 1.5))}</div>
+            <div className="lbl">العربون (ثابت)</div>
           </div>
-
-          {v.amenities?.length > 0 && (
-            <div className="chips" style={{ marginTop: 10, marginBottom: 0 }}>
-              {v.amenities.map((a) => <span key={a} className="chip" style={{ cursor: 'default' }}>{a}</span>)}
-            </div>
-          )}
         </div>
       </div>
 
-      {v.shamcash_active && v.shamcash_number && (
-        <div className="card">
-          <div className="card-title"><Icon name="card" size={17} /> الدفع عبر شام كاش</div>
-          <div className="kv"><span className="k"><Icon name="phone" size={15} /> رقم الحساب</span><span className="v" dir="ltr">{v.shamcash_number}</span></div>
-          {v.shamcash_name && <div className="kv"><span className="k"><Icon name="user" size={15} /> اسم الحساب</span><span className="v">{v.shamcash_name}</span></div>}
-          {v.shamcash_qr_url && (
-            <div className="qr-box mt8"><img src={v.shamcash_qr_url} alt="QR شام كاش" /></div>
-          )}
-        </div>
-      )}
+      {/* التفاصيل */}
+      <div className="card">
+        <div className="card-title"><Icon name="info" size={17} /> التفاصيل</div>
+        {v.description && <p className="muted" style={{ fontSize: 13.5 }}>{v.description}</p>}
+        <div className="kv"><span className="k"><Icon name="clock" size={15} /> أوقات العمل</span><span className="v">{timeAr(v.open_time)} — {timeAr(v.close_time)}</span></div>
+        <div className="kv"><span className="k"><Icon name="calendar" size={15} /> مدة الحجز</span><span className="v">ساعة ونصف (فاصل 10 دقائق)</span></div>
+        <div className="kv"><span className="k"><Icon name="card" size={15} /> طريقة الدفع</span><span className="v">عربون عبر شام كاش</span></div>
+        {v.phone && <div className="kv"><span className="k"><Icon name="phone" size={15} /> للتواصل</span><span className="v" dir="ltr">{v.phone}</span></div>}
+        {v.whatsapp && (
+          <div className="kv">
+            <span className="k"><Icon name="whatsapp" size={15} /> واتساب</span>
+            <a className="btn sm secondary" href={`https://wa.me/${v.whatsapp.replace(/\D/g, '')}`} target="_blank" rel="noreferrer">محادثة</a>
+          </div>
+        )}
+        {v.amenities?.length > 0 && (
+          <div className="chips" style={{ marginTop: 10, marginBottom: 0 }}>
+            {v.amenities.map((a) => <span key={a} className="chip" style={{ cursor: 'default' }}>{a}</span>)}
+          </div>
+        )}
+      </div>
 
       {!isOwner && (
-        <Link to={`/venues/${id}/book`} className="btn block lg"><Icon name="calendar" size={18} /> احجز هذا الملعب</Link>
+        <Link to={`/venues/${id}/book`} className="btn block lg"><Icon name="calendar" size={18} /> احجز الآن</Link>
       )}
       {isOwner && <Link to="/dashboard" className="btn secondary block"><Icon name="sliders" size={17} /> إدارة ملعبك من لوحة التحكم</Link>}
 
+      {/* التقييمات */}
       <div className="section">
         <div className="section-head"><h2><Icon name="star" size={17} /> التقييمات</h2></div>
         {user && (

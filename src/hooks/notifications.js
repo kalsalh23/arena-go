@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 
 // Unread count — RLS scopes rows to the signed-in user automatically.
+// Polls as a fallback so the bell stays fresh even if realtime hiccups.
 export function useUnreadCount() {
   return useQuery({
     queryKey: ['notifications-unread'],
@@ -14,7 +15,7 @@ export function useUnreadCount() {
       if (error) throw error
       return count ?? 0
     },
-    refetchInterval: 60_000,
+    refetchInterval: 25_000,
   })
 }
 
@@ -23,21 +24,32 @@ export function useNotificationsRealtime(userId, onNew) {
   const qc = useQueryClient()
   useEffect(() => {
     if (!userId) return
+    const invalidate = () => {
+      qc.invalidateQueries({ queryKey: ['notifications'] })
+      qc.invalidateQueries({ queryKey: ['notifications-unread'] })
+    }
     const channel = supabase
       .channel('notifications-' + userId)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
         (payload) => {
-          qc.invalidateQueries({ queryKey: ['notifications'] })
-          qc.invalidateQueries({ queryKey: ['notifications-unread'] })
+          invalidate()
           const n = payload.new
           if (onNew) onNew(n)
           showBrowserNotification(n)
         }
       )
       .subscribe()
+
+    // Keep everything fresh when the user returns to the app or connection resumes
+    const onVisible = () => { if (document.visibilityState === 'visible') { invalidate(); supabase.realtime?.connPromise?.catch(() => {}) } }
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('online', invalidate)
+
     return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('online', invalidate)
       supabase.removeChannel(channel)
     }
   }, [userId, onNew, qc])

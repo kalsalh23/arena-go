@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
 import { Spinner } from './components/ui'
+import Splash from './components/Splash'
 
 import AuthPage from './pages/auth/AuthPage'
 import HomePage from './pages/HomePage'
@@ -35,7 +36,9 @@ function RequireAuth({ children, roles }) {
 
 export default function App() {
   return (
-    <Routes>
+    <>
+      <Splash />
+      <Routes>
       <Route path="/auth" element={<AuthPage />} />
 
       <Route path="/" element={<HomePage />} />
@@ -65,6 +68,7 @@ export default function App() {
       <Route path="/dashboard/tournaments/:id" element={<RequireAuth roles={['venue_owner','admin']}><ManageTournamentPage /></RequireAuth>} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+      </Routes>
+    </>
   )
 }
