@@ -110,10 +110,9 @@ export default function HomePage() {
         )}
       </div>
 
-      {(profile?.role === 'venue_owner' || profile?.role === 'admin') && (
+      {profile?.role === 'venue_owner' && (
         <div className="section" style={{ marginTop: 16 }}>
-          {profile?.role === 'venue_owner' && <Link to="/dashboard" className="btn secondary block"><Icon name="sliders" size={17} /> لوحة تحكم صاحب الملعب</Link>}
-          {profile?.role === 'admin' && <Link to="/admin" className="btn dark block"><Icon name="shield" size={17} /> لوحة الإدارة</Link>}
+          <Link to="/dashboard" className="btn secondary block"><Icon name="sliders" size={17} /> لوحة تحكم صاحب الملعب</Link>
         </div>
       )}
     </Layout>

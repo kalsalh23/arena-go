@@ -11,7 +11,7 @@ const NAV = [
   { to: '/matches', label: 'مبارياتي', ic: 'calendar' },
 ]
 
-export default function Layout({ title, titleIcon, children, headerRight }) {
+export default function Layout({ title, titleIcon, children, headerRight, hideNav }) {
   const { user, profile } = useAuth()
   const location = useLocation()
   const { data: unread } = useUnreadCount()
@@ -32,7 +32,7 @@ export default function Layout({ title, titleIcon, children, headerRight }) {
         )}
         <div style={{ flex: 1 }} />
         {headerRight}
-        {user && (
+        {user && !hideNav && (
           <>
             <NavLink to="/notifications" className="icon-btn" aria-label="الإشعارات">
               <Icon name="bell" size={18} />
@@ -47,16 +47,18 @@ export default function Layout({ title, titleIcon, children, headerRight }) {
 
       <main className="page">{children}</main>
 
-      <nav className="bottom-nav">
-        <div className="inner">
-          {NAV.map((n) => (
-            <NavLink key={n.to} to={n.to} end={n.to === '/'} className={({ isActive }) => (isActive ? 'active' : '')}>
-              <Icon name={n.ic} size={21} />
-              {n.label}
-            </NavLink>
-          ))}
-        </div>
-      </nav>
+      {!hideNav && (
+        <nav className="bottom-nav">
+          <div className="inner">
+            {NAV.map((n) => (
+              <NavLink key={n.to} to={n.to} end={n.to === '/'} className={({ isActive }) => (isActive ? 'active' : '')}>
+                <Icon name={n.ic} size={21} />
+                {n.label}
+              </NavLink>
+            ))}
+          </div>
+        </nav>
+      )}
     </div>
   )
 }

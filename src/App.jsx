@@ -22,7 +22,6 @@ import OwnerDashboard from './pages/dashboard/OwnerDashboard'
 import VenueForm from './pages/dashboard/VenueForm'
 import TournamentForm from './pages/dashboard/TournamentForm'
 import ManageTournamentPage from './pages/dashboard/ManageTournamentPage'
-import AdminDashboard from './pages/admin/AdminDashboard'
 import AboutPage from './pages/about/AboutPage'
 
 function RequireAuth({ children, roles }) {
@@ -64,8 +63,6 @@ export default function App() {
       <Route path="/dashboard/venues/:id/edit" element={<RequireAuth roles={['venue_owner','admin']}><VenueForm /></RequireAuth>} />
       <Route path="/dashboard/tournaments/new" element={<RequireAuth roles={['venue_owner','admin']}><TournamentForm /></RequireAuth>} />
       <Route path="/dashboard/tournaments/:id" element={<RequireAuth roles={['venue_owner','admin']}><ManageTournamentPage /></RequireAuth>} />
-
-      <Route path="/admin" element={<RequireAuth roles={['admin']}><AdminDashboard /></RequireAuth>} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

@@ -22,8 +22,25 @@ function genPassword() {
 
 export default function AdminDashboard() {
   const [tab, setTab] = useState('overview')
+  const { profile, signOut } = useAuth()
   return (
-    <Layout title="لوحة إدارة النظام" titleIcon="shield">
+    <Layout
+      title="لوحة إدارة النظام"
+      titleIcon="shield"
+      hideNav
+      headerRight={
+        <button className="btn sm danger" onClick={signOut}>
+          <Icon name="logout" size={14} /> خروج
+        </button>
+      }
+    >
+      <div className="card" style={{ padding: '10px 15px', marginBottom: 12 }}>
+        <div className="row between">
+          <span className="tiny" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+            <Icon name="shield" size={14} /> {profile?.full_name || 'مدير النظام'} — صلاحية كاملة
+          </span>
+        </div>
+      </div>
       <div className="tabs">
         {TABS.map((t) => (
           <button key={t.key} className={tab === t.key ? 'active' : ''} onClick={() => setTab(t.key)}>{t.label}</button>

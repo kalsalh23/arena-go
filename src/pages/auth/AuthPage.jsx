@@ -61,23 +61,10 @@ export default function AuthPage() {
             <ErrorBox>{error}</ErrorBox>
 
             {mode === 'signup' && (
-              <>
-                <div className="field">
-                  <label>الاسم الكامل</label>
-                  <input className="input" value={form.fullName} onChange={set('fullName')} placeholder="مثال: أحمد محمد" />
-                </div>
-                <div className="field">
-                  <label>نوع الحساب</label>
-                  <div className="row" style={{ gap: 8 }}>
-                    <button type="button" className={`chip ${form.role === 'player' ? 'active' : ''}`} onClick={() => setForm((f) => ({ ...f, role: 'player' }))}>
-                      <Icon name="ball" size={15} /> لاعب
-                    </button>
-                    <button type="button" className={`chip ${form.role === 'venue_owner' ? 'active' : ''}`} onClick={() => setForm((f) => ({ ...f, role: 'venue_owner' }))}>
-                      <Icon name="building" size={15} /> صاحب ملعب
-                    </button>
-                  </div>
-                </div>
-              </>
+              <div className="field">
+                <label>الاسم الكامل</label>
+                <input className="input" value={form.fullName} onChange={set('fullName')} placeholder="مثال: أحمد محمد" />
+              </div>
             )}
 
             <div className="field">
