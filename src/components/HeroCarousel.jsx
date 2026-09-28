@@ -13,12 +13,12 @@ export default function HeroCarousel() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('tournaments')
-        .select('id, name, logo_url, registration_fee, max_teams, village:villages(name), teams:tournament_teams(count)')
+        .select('id, name, logo_url, registration_fee, max_teams, village:villages(name), teams:tournament_teams(status)')
         .in('status', ['registration_open', 'full'])
         .order('created_at', { ascending: false })
         .limit(3)
       if (error) throw error
-      return data
+      return data.map((t) => ({ ...t, approved: (t.teams || []).filter((r) => r.status === 'approved').length }))
     },
   })
 
@@ -27,7 +27,7 @@ export default function HeroCarousel() {
     ...(tournaments.data || []).map((t) => ({
       kicker: '🏆 بطولة',
       title: t.name,
-      sub: `📍 ${t.village?.name || ''} • ${t.teams?.[0]?.count ?? 0}/${t.max_teams} فريق`,
+      sub: `📍 ${t.village?.name || ''} • ${t.approved}/${t.max_teams} فريق`,
       chip: t.registration_fee > 0 ? sypText(t.registration_fee) : 'مجانية',
       cta: 'سجّل فريقك',
       link: `/tournaments/${t.id}`,

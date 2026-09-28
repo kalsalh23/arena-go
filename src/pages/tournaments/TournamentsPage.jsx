@@ -38,7 +38,7 @@ export default function TournamentsPage() {
     queryFn: async () => {
       let q = supabase
         .from('tournaments')
-        .select('*, venue:venues(name), village:villages(name), teams:tournament_teams(count)')
+        .select('*, venue:venues(name), village:villages(name), teams:tournament_teams(status)')
       if (village) q = q.eq('village_id', village)
       if (search) q = q.ilike('name', `%${search}%`)
       if (status === 'open') q = q.in('status', OPEN_STATUSES)
@@ -48,7 +48,7 @@ export default function TournamentsPage() {
       q = q.order('created_at', { ascending: false })
       const { data, error } = await q
       if (error) throw error
-      return data
+      return data.map((t) => ({ ...t, approved: (t.teams || []).filter((r) => r.status === 'approved').length }))
     },
   })
 
@@ -99,7 +99,7 @@ export default function TournamentsPage() {
                 <div className="row wrap" style={{ gap: 6 }}>
                   {featured.prize_description && <span className="badge gold"><Icon name="gift" size={11} /> {featured.prize_description}</span>}
                   <span className="badge neutral"><Icon name="money" size={11} /> {featured.registration_fee > 0 ? sypText(featured.registration_fee) : 'مجانية'}</span>
-                  <span className="badge neutral"><Icon name="users" size={11} /> {featured.teams?.[0]?.count ?? 0}/{featured.max_teams}</span>
+                  <span className="badge neutral"><Icon name="users" size={11} /> {featured.approved ?? 0}/{featured.max_teams}</span>
                 </div>
                 {featured.registration_deadline && (
                   <div className="tiny mt8" style={{ color: 'var(--warn)', fontWeight: 700 }}>
@@ -125,7 +125,7 @@ export default function TournamentsPage() {
                 <Icon name="pin" size={11} /> {t.village?.name} • <Icon name="building" size={11} /> {t.venue?.name}
               </div>
               <div className="row between">
-                <span className="tiny"><Icon name="users" size={11} /> {t.teams?.[0]?.count ?? 0} / {t.max_teams} فريق</span>
+                <span className="tiny"><Icon name="users" size={11} /> {t.approved ?? 0} / {t.max_teams} فريق</span>
                 {t.registration_fee > 0
                   ? <span className="badge neutral"><Icon name="money" size={11} /> {sypText(t.registration_fee)}</span>
                   : <span className="badge success">مجانية</span>}
