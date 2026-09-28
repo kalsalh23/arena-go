@@ -90,7 +90,7 @@ export default function VenueDetailPage() {
                 key={u}
                 onClick={() => setPhoto(i)}
                 style={{
-                  flex: 0, width: 58, height: 44, borderRadius: 9, overflow: 'hidden',
+                  flex: '0 0 auto', width: 58, height: 44, borderRadius: 9, overflow: 'hidden',
                   border: photo === i ? '2.5px solid var(--brand)' : '2px solid var(--border)',
                   padding: 0, cursor: 'pointer', background: 'var(--surface-2)',
                 }}
