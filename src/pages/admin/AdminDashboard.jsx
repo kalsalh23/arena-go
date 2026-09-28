@@ -130,6 +130,7 @@ function OverviewTab({ onGo }) {
 function TournamentsTab() {
   const [err, setErr] = useState('')
   const [ok, setOk] = useState('')
+  const [showAdd, setShowAdd] = useState(false)
   const [rejectId, setRejectId] = useState(null)
   const [rejectReason, setRejectReason] = useState('')
 
@@ -187,6 +188,16 @@ function TournamentsTab() {
       <OkBox>{ok}</OkBox>
       {(pending.error || all.error) && (
         <ErrorBox>تعذر تحميل البطولات: {(pending.error || all.error).message}</ErrorBox>
+      )}
+
+      <button className="btn block" style={{ marginBottom: 12 }} onClick={() => setShowAdd(!showAdd)}>
+        <Icon name="plus" size={16} /> إضافة بطولة (أي قرية وأي ملعب)
+      </button>
+      {showAdd && (
+        <AdminTournamentForm
+          onDone={(msg) => { setOk(msg); setShowAdd(false); pending.refetch(); all.refetch() }}
+          onError={setErr}
+        />
       )}
 
       <div className="section" style={{ marginTop: 0 }}>
@@ -254,11 +265,21 @@ function UsersTab() {
   const [form, setForm] = useState({ name: '', phone: '' })
   const [created, setCreated] = useState(null)
   const [search, setSearch] = useState('')
+  const [expanded, setExpanded] = useState(null)
 
   const profiles = useQuery({
     queryKey: ['admin-profiles'],
     queryFn: async () => {
       const { data, error } = await supabase.from('profiles').select('*').order('created_at', { ascending: false }).limit(200)
+      if (error) throw error
+      return data
+    },
+  })
+
+  const ownedVenues = useQuery({
+    queryKey: ['admin-venues-lite'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('venues').select('id, name, owner_id, is_active').order('created_at')
       if (error) throw error
       return data
     },
@@ -270,6 +291,19 @@ function UsersTab() {
       if (error) throw new Error(error.message)
     },
     onSuccess: () => profiles.refetch(),
+    onError: (e) => setErr(e.message),
+  })
+
+  const del = useMutation({
+    mutationFn: async (uid) => {
+      const { error } = await supabase.rpc('admin_delete_user', { p_user: uid })
+      if (error) throw new Error(error.message)
+    },
+    onSuccess: () => {
+      setErr(''); setOk('تم حذف الحساب وكل بياناته')
+      setExpanded(null)
+      profiles.refetch(); ownedVenues.refetch()
+    },
     onError: (e) => setErr(e.message),
   })
 
@@ -362,7 +396,11 @@ function UsersTab() {
       </div>
 
       {profiles.isLoading ? <Spinner /> : filtered.length === 0 ? <Empty icon="users" text="لا نتائج" /> : (
-        filtered.map((p) => (
+        filtered.map((p) => {
+          const mine = (ownedVenues.data || []).filter((v) => v.owner_id === p.id)
+          const dashUrl = typeof location !== 'undefined' ? `${location.origin}/dashboard` : '/dashboard'
+          const isOpen = expanded === p.id
+          return (
           <div key={p.id} className="card" style={{ padding: 13 }}>
             <div className="row between">
               <div className="row">
@@ -379,20 +417,201 @@ function UsersTab() {
                 <span className={`badge ${p.role === 'admin' ? 'dark' : 'neutral'}`}>{p.role}</span>
               </div>
             </div>
-            {p.role !== 'admin' && (
-              <div className="btn-row">
-                <button className="btn sm outline" onClick={() => setUser.mutate({ uid: p.id, patch: { is_premium: !p.is_premium } })}>
-                  <Icon name="star" size={12} /> {p.is_premium ? 'إلغاء Premium' : 'تفعيل Premium'}
-                </button>
-                <button className="btn sm secondary" onClick={() => setUser.mutate({ uid: p.id, patch: { role: p.role === 'venue_owner' ? 'player' : 'venue_owner' } })}>
-                  {p.role === 'venue_owner' ? 'تحويله لاعباً' : 'ترقيته صاحب ملعب'}
-                </button>
+
+            {isOpen && (
+              <div className="card mt8" style={{ background: 'var(--surface-2)', boxShadow: 'none', border: '1px dashed var(--border)' }}>
+                <div className="card-title" style={{ fontSize: 13.5 }}><Icon name="info" size={15} /> تفاصيل الحساب</div>
+                <div className="kv"><span className="k"><Icon name="shield" size={14} /> الصلاحية</span><span className="v">{p.role === 'admin' ? 'مدير النظام' : p.role === 'venue_owner' ? 'صاحب ملعب' : 'لاعب'}</span></div>
+                {p.role === 'venue_owner' && (
+                  <>
+                    <div className="kv"><span className="k"><Icon name="building" size={14} /> ملاعبه</span><span className="v" style={{ fontSize: 12 }}>{mine.length ? mine.map((v) => `${v.name}${v.is_active ? '' : ' (موقوف)'}`).join(' • ') : 'لا يوجد'}</span></div>
+                    <div className="kv"><span className="k"><Icon name="pin" size={14} /> رابط لوحته</span><a className="v" href={dashUrl} target="_blank" rel="noreferrer" style={{ color: 'var(--brand)', fontSize: 11.5, wordBreak: 'break-all' }}>{dashUrl}</a></div>
+                  </>
+                )}
+                {p.role !== 'admin' && (
+                  <div className="btn-row">
+                    <a
+                      className="btn sm"
+                      style={{ background: '#25D366', boxShadow: 'none', color: '#fff' }}
+                      href={`https://wa.me/?text=${encodeURIComponent(`أهلاً ${p.full_name || ''} 👋\nبيانات لوحة التحكم الخاصة بك في Arena Go ⚽\n🔗 رابط اللوحة: ${dashUrl}\n📱 رقم الدخول: رقم هاتفك المسجل به\nبالتوفيق!`)}`}
+                      target="_blank" rel="noreferrer"
+                    >
+                      <Icon name="whatsapp" size={14} /> إرسال البيانات واتساب
+                    </a>
+                  </div>
+                )}
               </div>
             )}
+
+            <div className="btn-row">
+              <button className="btn sm outline" onClick={() => setExpanded(isOpen ? null : p.id)}>
+                <Icon name="info" size={13} /> {isOpen ? 'إخفاء التفاصيل' : 'عرض التفاصيل'}
+              </button>
+              <button className="btn sm outline" onClick={() => setUser.mutate({ uid: p.id, patch: { is_premium: !p.is_premium } })}>
+                <Icon name="star" size={12} /> {p.is_premium ? 'إلغاء Premium' : 'تفعيل Premium'}
+              </button>
+              {p.role !== 'admin' && (
+                <>
+                  <button className="btn sm secondary" onClick={() => setUser.mutate({ uid: p.id, patch: { role: p.role === 'venue_owner' ? 'player' : 'venue_owner' } })}>
+                    {p.role === 'venue_owner' ? 'تحويله لاعباً' : 'ترقيته صاحب ملعب'}
+                  </button>
+                  <button
+                    className="btn sm danger"
+                    onClick={() => {
+                      if (confirm(`حذف حساب "${p.full_name || 'المستخدم'}" نهائياً؟\nسيتم حذف ملاعبه وحجوزاته وفرقه وكل بياناته.`)) {
+                        if (confirm('تأكيد أخير: هذا الإجراء لا يمكن التراجع عنه!')) del.mutate(p.id)
+                      }
+                    }}
+                    disabled={del.isPending}
+                  >
+                    <Icon name="trash" size={13} /> حذف
+                  </button>
+                </>
+              )}
+            </div>
           </div>
-        ))
+          )
+        })
       )}
     </>
+  )
+}
+
+/* ---------------- إضافة بطولة من الإدارة (أي قرية + أي ملعب) ---------------- */
+function AdminTournamentForm({ onDone, onError }) {
+  const { profile } = useAuth()
+  const [form, setForm] = useState({
+    name: '', village_id: '', venue_id: '', tournament_type: 'groups', group_count: 2,
+    max_teams: 8, players_per_team: 11, registration_fee: '', prize_description: '',
+    start_date: '', registration_deadline: '', conditions: '',
+  })
+  const [onlySameVillage, setOnlySameVillage] = useState(false)
+
+  const villages = useQuery({
+    queryKey: ['admin-villages'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('villages').select('*').eq('is_active', true).order('name')
+      if (error) throw error
+      return data
+    },
+  })
+  const venues = useQuery({
+    queryKey: ['admin-all-venues'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('venues').select('id, name, village_id, village:villages(name)').eq('is_active', true).order('name')
+      if (error) throw error
+      return data
+    },
+  })
+
+  const create = useMutation({
+    mutationFn: async () => {
+      if (!form.name.trim()) throw new Error('أدخل اسم البطولة')
+      if (!form.village_id) throw new Error('اختر القرية')
+      if (!form.venue_id) throw new Error('اختر الملعب')
+      const { error } = await supabase.from('tournaments').insert({
+        owner_id: profile.id,
+        name: form.name.trim(),
+        village_id: form.village_id,
+        venue_id: form.venue_id,
+        tournament_type: form.tournament_type,
+        group_count: parseInt(form.group_count, 10) || 2,
+        max_teams: parseInt(form.max_teams, 10) || 8,
+        players_per_team: parseInt(form.players_per_team, 10) || 11,
+        registration_fee: parseInt(form.registration_fee, 10) || 0,
+        prize_description: form.prize_description,
+        conditions: form.conditions,
+        start_date: form.start_date || null,
+        registration_deadline: form.registration_deadline || null,
+        status: 'registration_open',
+      })
+      if (error) throw new Error(error.message)
+    },
+    onSuccess: () => onDone('أُنشئت البطولة وهي مفتوحة للتسجيل مباشرة 🏆'),
+    onError: (e) => onError(e.message.replace('Error: ', '')),
+  })
+
+  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
+  const venueOptions = (venues.data || []).filter((v) => !onlySameVillage || v.village_id === form.village_id)
+
+  return (
+    <div className="card" style={{ background: 'var(--surface-2)' }}>
+      <div className="card-title"><Icon name="trophy" size={16} /> بطولة إدارية — اختر القرية والملعب بنفسك</div>
+      <div className="field">
+        <label>اسم البطولة *</label>
+        <input className="input" value={form.name} onChange={set('name')} placeholder="مثال: دوري قرى ريف حماة" />
+      </div>
+      <div className="grid-2">
+        <div className="field">
+          <label>القرية *</label>
+          <select className="select" value={form.village_id} onChange={set('village_id')}>
+            <option value="">— اختر —</option>
+            {(villages.data || []).map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
+          </select>
+        </div>
+        <div className="field">
+          <label>الملعب *</label>
+          <select className="select" value={form.venue_id} onChange={set('venue_id')}>
+            <option value="">— اختر —</option>
+            {venueOptions.map((v) => <option key={v.id} value={v.id}>{v.name} — {v.village?.name}</option>)}
+          </select>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6, fontSize: 11.5 }}>
+            <input type="checkbox" checked={onlySameVillage} onChange={(e) => setOnlySameVillage(e.target.checked)} />
+            ملاعب نفس القرية فقط
+          </label>
+        </div>
+      </div>
+      <div className="grid-2">
+        <div className="field">
+          <label>نظام البطولة</label>
+          <select className="select" value={form.tournament_type} onChange={set('tournament_type')}>
+            <option value="groups">مجموعات</option>
+            <option value="knockout">خروج مغلق</option>
+            <option value="groups_knockout">مجموعات + خروج مغلق</option>
+          </select>
+        </div>
+        <div className="field">
+          <label>عدد المجموعات</label>
+          <input className="input" type="number" min="1" max="8" value={form.group_count} onChange={set('group_count')} disabled={form.tournament_type === 'knockout'} />
+        </div>
+      </div>
+      <div className="grid-2">
+        <div className="field">
+          <label>عدد الفرق</label>
+          <input className="input" type="number" min="2" max="32" value={form.max_teams} onChange={set('max_teams')} />
+        </div>
+        <div className="field">
+          <label>لاعبون لكل فريق</label>
+          <input className="input" type="number" min="3" max="25" value={form.players_per_team} onChange={set('players_per_team')} />
+        </div>
+      </div>
+      <div className="field">
+        <label>رسوم الاشتراك (1000 = 100,000 ل.س — 0 مجانية)</label>
+        <input className="input" type="number" min="0" value={form.registration_fee} onChange={set('registration_fee')} />
+      </div>
+      <div className="grid-2">
+        <div className="field">
+          <label>تاريخ البداية</label>
+          <input className="input" type="date" value={form.start_date} onChange={set('start_date')} />
+        </div>
+        <div className="field">
+          <label>آخر موعد للتسجيل</label>
+          <input className="input" type="date" value={form.registration_deadline} onChange={set('registration_deadline')} />
+        </div>
+      </div>
+      <div className="field">
+        <label>الجوائز</label>
+        <input className="input" value={form.prize_description} onChange={set('prize_description')} placeholder="مثال: الجائزة الأولى 500,000 ل.س" />
+      </div>
+      <div className="field mb0">
+        <label>شروط المشاركة</label>
+        <textarea className="textarea" value={form.conditions} onChange={set('conditions')} placeholder="مثال: مفتوحة لفرق جميع القرى…" />
+      </div>
+      <button className="btn block mt8" onClick={() => create.mutate()} disabled={create.isPending}>
+        {create.isPending ? 'جارٍ الإنشاء…' : 'إنشاء وفتح التسجيل مباشرة'}
+      </button>
+      <div className="hint center mt8">البطولة الإدارية تظهر للاعبين فوراً — ويمكن لأي فريق من أي قرية التسجيل.</div>
+    </div>
   )
 }
 
