@@ -21,14 +21,14 @@ export default function Splash() {
         opacity: leaving ? 0 : 1,
         position: 'fixed', inset: 0, zIndex: 999,
         transition: 'opacity 0.55s ease',
-        backgroundImage: 'url(/demo/splash.svg)',
+        backgroundImage: 'url(/demo/splash-stars.jpg)',
         backgroundSize: 'cover',
-        backgroundPosition: 'center',
+        backgroundPosition: 'center 22%',
         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
         gap: 14,
       }}
     >
-      <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(6,20,14,0.25), rgba(6,20,14,0.78) 70%, rgba(6,20,14,0.92))' }} />
+      <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(6,20,14,0.38), rgba(8,32,20,0.82) 68%, rgba(6,20,14,0.95))' }} />
       <div style={{ position: 'relative', textAlign: 'center', padding: '0 30px' }}>
         <div style={{
           width: 86, height: 86, borderRadius: 26, margin: '0 auto 14px',

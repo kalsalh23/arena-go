@@ -104,7 +104,7 @@ for (const s of venueSpecs) {
   const v = await rest('venues', '?select=id', owner.token, 'POST', {
     owner_id: owner.id, name: s.name, village_id: V(s.village), venue_type: s.type,
     price_per_hour: s.price, deposit_percent: 20, open_time: '08:00:00', close_time: '23:00:00',
-    images: [1, 2, 3, 4, 5].map((i) => `/demo/ph/${s.ph}-${i}.svg`), rating: s.rating, ratings_count: s.rc,
+    images: [1, 2, 3, 4, 5].map((i) => `/demo/real/${s.ph}-${i}.jpg`), rating: s.rating, ratings_count: s.rc,
     amenities: ['إضاءة ليلية', 'مدرجات', 'استراحة', 'موقف سيارات'],
     phone: '0999000000', whatsapp: '963999000000',
     shamcash_number: '0b4b947393d6210a44fa022ab37107c9', shamcash_name: 'حكومات مدينة الخالد', shamcash_active: true,

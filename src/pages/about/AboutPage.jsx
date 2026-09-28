@@ -39,6 +39,12 @@ export default function AboutPage() {
         <div className="kv"><span className="k"><Icon name="card" size={16} /> الدفع</span><span className="v">شام كاش</span></div>
       </div>
 
+      <div className="card">
+        <div className="tiny" style={{ lineHeight: 1.8 }}>
+          <Icon name="image" size={13} /> حقوق الصور: صور الملاعب واللاعبين مستخدمة لأغراض العرض من [Wikimedia Commons](https://commons.wikimedia.org) و[Unsplash](https://unsplash.com) بموجب تراخيص Creative Commons — تُستبدل بصور الملاعب الفعلية عند تشغيل المنصة الرسمي.
+        </div>
+      </div>
+
       <div className="section">
         <div className="section-head"><h2><Icon name="user" size={17} /> مطوّر المنصة</h2></div>
         <div className="dev-card">
