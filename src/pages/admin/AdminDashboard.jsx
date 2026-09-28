@@ -4,6 +4,7 @@ import Layout from '../../components/Layout'
 import Icon from '../../components/Icon'
 import { Spinner, Empty, ErrorBox, OkBox } from '../../components/ui'
 import { supabase } from '../../lib/supabase'
+import { useAuth } from '../../context/AuthContext'
 import { sypText, TOURNAMENT_TYPE_LABELS, BOOKING_STATUS_LABELS, dateAr, timeAr } from '../../lib/constants'
 import { statusBadge } from '../tournaments/TournamentsPage'
 

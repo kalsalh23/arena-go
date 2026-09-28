@@ -19,7 +19,7 @@ export default function Layout({ title, titleIcon, children, headerRight, hideNa
   return (
     <div className="app-shell">
       <header className="app-header">
-        {location.pathname === '/' ? (
+        {location.pathname === '/' && !hideNav ? (
           <div className="brand-logo">
             <span className="ball-wrap"><Icon name="ball" size={19} /></span>
             Arena Go
