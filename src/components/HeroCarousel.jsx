@@ -57,7 +57,11 @@ export default function HeroCarousel() {
             <div className="hero-shade">
               <div className="hero-kicker">
                 <span className="badge hero-chip">{s.kicker}</span>
-                {s.chip && <span className="badge img-chip gold" style={{ position: 'static' }}>{s.chip}</span>}
+                {s.chip && (
+                  <span className="badge" style={{ background: '#ffffff', color: 'var(--brand-deep)', border: '1px solid rgba(255,255,255,0.6)', fontSize: 12 }}>
+                    {s.chip}
+                  </span>
+                )}
               </div>
               <div className="hero-title">{s.title}</div>
               {s.sub && <div className="hero-sub">{s.sub}</div>}
