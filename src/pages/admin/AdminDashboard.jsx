@@ -4,8 +4,16 @@ import Layout from '../../components/Layout'
 import Icon from '../../components/Icon'
 import { Spinner, Empty, ErrorBox, OkBox } from '../../components/ui'
 import { supabase } from '../../lib/supabase'
-import { sypText, TOURNAMENT_TYPE_LABELS } from '../../lib/constants'
+import { sypText, TOURNAMENT_TYPE_LABELS, BOOKING_STATUS_LABELS, dateAr, timeAr } from '../../lib/constants'
 import { statusBadge } from '../tournaments/TournamentsPage'
+
+const TABS = [
+  { key: 'overview', label: 'نظرة عامة', ic: 'sliders' },
+  { key: 'tournaments', label: 'البطولات', ic: 'trophy' },
+  { key: 'users', label: 'المستخدمون', ic: 'users' },
+  { key: 'venues', label: 'الملاعب', ic: 'building' },
+  { key: 'villages', label: 'القرى', ic: 'pin' },
+]
 
 function genPassword() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789'
@@ -13,22 +21,95 @@ function genPassword() {
 }
 
 export default function AdminDashboard() {
-  const [tab, setTab] = useState('pending')
+  const [tab, setTab] = useState('overview')
   return (
-    <Layout title="لوحة الإدارة" titleIcon="shield">
+    <Layout title="لوحة إدارة النظام" titleIcon="shield">
       <div className="tabs">
-        <button className={tab === 'pending' ? 'active' : ''} onClick={() => setTab('pending')}>طلبات البطولات</button>
-        <button className={tab === 'all' ? 'active' : ''} onClick={() => setTab('all')}>كل البطولات</button>
-        <button className={tab === 'users' ? 'active' : ''} onClick={() => setTab('users')}>المستخدمون</button>
+        {TABS.map((t) => (
+          <button key={t.key} className={tab === t.key ? 'active' : ''} onClick={() => setTab(t.key)}>{t.label}</button>
+        ))}
       </div>
-      {tab === 'pending' && <PendingTab />}
-      {tab === 'all' && <AllTab />}
+      {tab === 'overview' && <OverviewTab onGo={setTab} />}
+      {tab === 'tournaments' && <TournamentsTab />}
       {tab === 'users' && <UsersTab />}
+      {tab === 'venues' && <VenuesTab />}
+      {tab === 'villages' && <VillagesTab />}
     </Layout>
   )
 }
 
-function PendingTab() {
+/* ---------------- نظرة عامة ---------------- */
+function OverviewTab({ onGo }) {
+  const count = (table, qs = '') =>
+    useQuery({
+      queryKey: ['admin-count', table, qs],
+      queryFn: async () => {
+        let q = supabase.from(table).select('id', { count: 'exact', head: true })
+        if (qs) q = q.or(qs)
+        const { count: c, error: e } = await q
+        if (e) throw e
+        return c
+      },
+    })
+
+  const users = count('profiles')
+  const venues = count('venues')
+  const teams = count('teams', 'is_active=eq.true')
+  const bookings = count('bookings', 'booking_status=in.(pending_review,confirmed)')
+  const pendingT = count('tournaments', 'status=eq.pending_admin_approval')
+  const openT = count('tournaments', 'status=eq.registration_open')
+  const ongoingT = count('tournaments', 'status=in.(full,draw_pending,draw_completed,ongoing)')
+  const doneT = count('tournaments', 'status=eq.completed')
+
+  const Stat = ({ n, l, ic, onClick }) => (
+    <button className="stat-card" style={{ cursor: onClick ? 'pointer' : 'default', border: 'none' }} onClick={onClick}>
+      <div className="num" style={{ fontSize: 20 }}>{n}</div>
+      <div className="lbl">{l}</div>
+    </button>
+  )
+
+  return (
+    <>
+      {(pendingT.data ?? 0) > 0 && (
+        <div className="card" style={{ background: 'var(--warn-soft)', border: 'none', padding: 13 }}>
+          <div className="row between">
+            <b style={{ color: 'var(--warn)' }}><Icon name="info" size={15} /> {pendingT.data} طلب بطولة بانتظار موافقتك</b>
+            <button className="btn sm" onClick={() => onGo('tournaments')}>مراجعة</button>
+          </div>
+        </div>
+      )}
+
+      <div className="section" style={{ marginTop: 8 }}>
+        <div className="section-head"><h2><Icon name="users" size={16} /> المجتمع</h2></div>
+        <div className="grid-2">
+          <Stat n={users.data ?? '…'} l="مستخدم مسجل" ic="users" />
+          <Stat n={teams.data ?? '…'} l="فريق نشط" ic="ball" />
+        </div>
+      </div>
+
+      <div className="section">
+        <div className="section-head"><h2><Icon name="building" size={16} /> الملاعب والحجوزات</h2></div>
+        <div className="grid-2">
+          <Stat n={venues.data ?? '…'} l="ملعب" ic="building" onClick={() => onGo('venues')} />
+          <Stat n={bookings.data ?? '…'} l="حجز نشط" ic="calendar" />
+        </div>
+      </div>
+
+      <div className="section">
+        <div className="section-head"><h2><Icon name="trophy" size={16} /> البطولات</h2></div>
+        <div className="grid-4">
+          <Stat n={pendingT.data ?? 0} l="بانتظار الموافقة" onClick={() => onGo('tournaments')} />
+          <Stat n={openT.data ?? 0} l="مفتوحة للتسجيل" />
+          <Stat n={ongoingT.data ?? 0} l="جارية" />
+          <Stat n={doneT.data ?? 0} l="منتهية" />
+        </div>
+      </div>
+    </>
+  )
+}
+
+/* ---------------- البطولات ---------------- */
+function TournamentsTab() {
   const [err, setErr] = useState('')
   const [ok, setOk] = useState('')
   const [rejectId, setRejectId] = useState(null)
@@ -47,6 +128,19 @@ function PendingTab() {
     },
   })
 
+  const all = useQuery({
+    queryKey: ['admin-tournaments', 'all'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('tournaments')
+        .select('*, venue:venues(name), village:villages(name), owner:profiles(full_name)')
+        .order('created_at', { ascending: false })
+        .limit(60)
+      if (error) throw error
+      return data
+    },
+  })
+
   const review = useMutation({
     mutationFn: async ({ tid, decision, reason }) => {
       const { error } = await supabase.rpc('admin_review_tournament', { p_tournament_id: tid, p_decision: decision, p_reason: reason || null })
@@ -55,61 +149,9 @@ function PendingTab() {
     onSuccess: () => {
       setErr(''); setOk('تمت معالجة البطولة وإشعار صاحب الملعب')
       setRejectId(null); setRejectReason('')
-      pending.refetch()
+      pending.refetch(); all.refetch()
     },
     onError: (e) => { setOk(''); setErr(e.message) },
-  })
-
-  return (
-    <>
-      <ErrorBox>{err}</ErrorBox>
-      <OkBox>{ok}</OkBox>
-      {pending.isLoading ? <Spinner /> : pending.data?.length === 0 ? <Empty icon="shield" text="لا توجد طلبات بانتظار المراجعة" /> : (
-        pending.data.map((t) => (
-          <div key={t.id} className="card">
-            <div className="card-title"><Icon name="trophy" size={16} /> {t.name}</div>
-            <div className="tiny">🏟️ {t.venue?.name} • 📍 {t.village?.name} • 👤 {t.owner?.full_name}</div>
-            <div className="kv"><span className="k"><Icon name="flag" size={14} /> النظام</span><span className="v">{TOURNAMENT_TYPE_LABELS[t.tournament_type]}</span></div>
-            <div className="kv"><span className="k"><Icon name="users" size={14} /> الفرق</span><span className="v">{t.max_teams}</span></div>
-            <div className="kv"><span className="k"><Icon name="money" size={14} /> الرسوم</span><span className="v">{sypText(t.registration_fee)}</span></div>
-            <div className="kv"><span className="k"><Icon name="users" size={14} /> لاعبون/فريق</span><span className="v">{t.players_per_team}</span></div>
-            {t.prize_description && <div className="kv"><span className="k"><Icon name="gift" size={14} /> الجوائز</span><span className="v">{t.prize_description}</span></div>}
-            {t.conditions && <p className="tiny" style={{ whiteSpace: 'pre-wrap' }}>الشروط: {t.conditions}</p>}
-
-            {rejectId === t.id ? (
-              <div className="mt8">
-                <textarea className="textarea" style={{ minHeight: 60 }} placeholder="سبب الرفض…" value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} />
-                <div className="btn-row">
-                  <button className="btn sm danger" onClick={() => review.mutate({ tid: t.id, decision: 'rejected', reason: rejectReason })} disabled={review.isPending}>تأكيد الرفض</button>
-                  <button className="btn sm outline" onClick={() => setRejectId(null)}>إلغاء</button>
-                </div>
-              </div>
-            ) : (
-              <div className="btn-row">
-                <button className="btn sm success" onClick={() => review.mutate({ tid: t.id, decision: 'approved' })} disabled={review.isPending}><Icon name="check" size={13} /> موافقة</button>
-                <button className="btn sm danger" onClick={() => setRejectId(t.id)}><Icon name="x" size={13} /> رفض</button>
-              </div>
-            )}
-          </div>
-        ))
-      )}
-    </>
-  )
-}
-
-function AllTab() {
-  const [err, setErr] = useState('')
-  const all = useQuery({
-    queryKey: ['admin-tournaments', 'all'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('tournaments')
-        .select('*, venue:venues(name), village:villages(name), owner:profiles(full_name)')
-        .order('created_at', { ascending: false })
-        .limit(50)
-      if (error) throw error
-      return data
-    },
   })
 
   const setStatus = useMutation({
@@ -124,38 +166,78 @@ function AllTab() {
   return (
     <>
       <ErrorBox>{err}</ErrorBox>
-      {all.isLoading ? <Spinner /> : (
-        all.data.map((t) => (
+      <OkBox>{ok}</OkBox>
+
+      <div className="section" style={{ marginTop: 0 }}>
+        <div className="section-head"><h2><Icon name="clock" size={16} /> بانتظار الموافقة ({pending.data?.length ?? 0})</h2></div>
+        {pending.isLoading ? <Spinner /> : pending.data?.length === 0 ? <Empty icon="checkC" text="لا طلبات جديدة" /> : (
+          pending.data.map((t) => (
+            <div key={t.id} className="card">
+              <div className="card-title"><Icon name="trophy" size={16} /> {t.name}</div>
+              <div className="tiny">🏟️ {t.venue?.name} • 📍 {t.village?.name} • 👤 {t.owner?.full_name}</div>
+              <div className="kv"><span className="k"><Icon name="flag" size={14} /> النظام</span><span className="v">{TOURNAMENT_TYPE_LABELS[t.tournament_type]}</span></div>
+              <div className="kv"><span className="k"><Icon name="users" size={14} /> الفرق</span><span className="v">{t.max_teams}</span></div>
+              <div className="kv"><span className="k"><Icon name="money" size={14} /> الرسوم</span><span className="v">{sypText(t.registration_fee)}</span></div>
+              <div className="kv"><span className="k"><Icon name="users" size={14} /> لاعبون/فريق</span><span className="v">{t.players_per_team}</span></div>
+              {t.prize_description && <div className="kv"><span className="k"><Icon name="gift" size={14} /> الجوائز</span><span className="v">{t.prize_description}</span></div>}
+              {t.conditions && <p className="tiny" style={{ whiteSpace: 'pre-wrap' }}>الشروط: {t.conditions}</p>}
+
+              {rejectId === t.id ? (
+                <div className="mt8">
+                  <textarea className="textarea" style={{ minHeight: 60 }} placeholder="سبب الرفض…" value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} />
+                  <div className="btn-row">
+                    <button className="btn sm danger" onClick={() => review.mutate({ tid: t.id, decision: 'rejected', reason: rejectReason })} disabled={review.isPending}>تأكيد الرفض</button>
+                    <button className="btn sm outline" onClick={() => setRejectId(null)}>إلغاء</button>
+                  </div>
+                </div>
+              ) : (
+                <div className="btn-row">
+                  <button className="btn sm success" onClick={() => review.mutate({ tid: t.id, decision: 'approved' })} disabled={review.isPending}><Icon name="check" size={13} /> موافقة</button>
+                  <button className="btn sm danger" onClick={() => setRejectId(t.id)}><Icon name="x" size={13} /> رفض</button>
+                </div>
+              )}
+            </div>
+          ))
+        )}
+      </div>
+
+      <div className="section">
+        <div className="section-head"><h2><Icon name="trophy" size={16} /> كل البطولات</h2></div>
+        {all.isLoading ? <Spinner /> : all.data.map((t) => (
           <div key={t.id} className="card" style={{ padding: 13 }}>
             <div className="row between">
               <div className="card-title" style={{ fontSize: 14.5 }}>{t.name}</div>
               {statusBadge(t.status)}
             </div>
-            <div className="tiny">🏟️ {t.venue?.name} • 📍 {t.village?.name}</div>
+            <div className="tiny">🏟️ {t.venue?.name} • 📍 {t.village?.name} • 👤 {t.owner?.full_name}</div>
+            {t.status === 'rejected' && t.rejection_reason && <div className="tiny" style={{ color: 'var(--danger)' }}>سبب الرفض: {t.rejection_reason}</div>}
             {['registration_open', 'full', 'draw_completed', 'ongoing'].includes(t.status) && (
               <div className="btn-row">
-                <button className="btn sm danger" onClick={() => { if (confirm('إيقاف/إلغاء البطولة؟')) setStatus.mutate({ tid: t.id, status: 'cancelled' }) }}>
+                <button className="btn sm danger" onClick={() => { if (confirm('إيقاف/إلغاء البطولة؟ سيتم إشعار المنظم والفرق.')) setStatus.mutate({ tid: t.id, status: 'cancelled' }) }}>
                   <Icon name="x" size={13} /> إيقاف البطولة
                 </button>
               </div>
             )}
           </div>
-        ))
-      )}
+        ))}
+      </div>
     </>
   )
 }
 
+/* ---------------- المستخدمون + أصحاب الملاعب ---------------- */
 function UsersTab() {
   const [err, setErr] = useState('')
+  const [ok, setOk] = useState('')
   const [showAdd, setShowAdd] = useState(false)
   const [form, setForm] = useState({ name: '', phone: '' })
   const [created, setCreated] = useState(null)
+  const [search, setSearch] = useState('')
 
   const profiles = useQuery({
     queryKey: ['admin-profiles'],
     queryFn: async () => {
-      const { data, error } = await supabase.from('profiles').select('*').order('created_at', { ascending: false }).limit(100)
+      const { data, error } = await supabase.from('profiles').select('*').order('created_at', { ascending: false }).limit(200)
       if (error) throw error
       return data
     },
@@ -192,23 +274,29 @@ function UsersTab() {
 
   const dashboardUrl = typeof location !== 'undefined' ? `${location.origin}/dashboard` : '/dashboard'
   const waText = created
-    ? `أهلاً ${created.full_name} 👋\nتم إنشاء حسابك كصاحب ملعب في منصة Arena Go ⚽\n\n🔗 رابط لوحة التحكم:\n${dashboardUrl}\n\n📱 رقم الهاتف: +${created.phone}\n🔑 كلمة المرور: ${created.password}\n\nبعد الدخول يمكنك إضافة ملاعبك وإدارة الحجوزات والبطولات.`
+    ? `أهلاً ${created.full_name} 👋\nتم إنشاء حسابك كصاحب ملعب في منصة Arena Go ⚽\n\n🔗 رابط لوحة التحكم:\n${dashboardUrl}\n\n📱 رقم الهاتف: +${created.phone}\n🔑 كلمة المرور: ${created.password}\n\nبعد الدخول يمكنك إضافة ملاعبك وإدارة الحجوزات والبطولات بالكامل.`
     : ''
+
+  const filtered = (profiles.data || []).filter((p) =>
+    !search || (p.full_name || '').includes(search) || p.role.includes(search)
+  )
 
   return (
     <>
       <ErrorBox>{err}</ErrorBox>
+      <OkBox>{ok}</OkBox>
 
       <button className="btn block" style={{ marginBottom: 12 }} onClick={() => { setShowAdd(!showAdd); setCreated(null) }}>
         <Icon name="plus" size={16} /> إضافة صاحب ملعب جديد
       </button>
 
       {created && (
-        <div className="card" style={{ background: 'var(--brand-soft)', border: '1px dashed var(--brand-soft-2)' }}>
-          <div className="card-title"><Icon name="checkC" size={16} /> تم إنشاء الحساب — أرسل البيانات واتساب</div>
-          <div className="kv"><span className="k">الاسم</span><span className="v">{created.full_name}</span></div>
-          <div className="kv"><span className="k">الهاتف</span><span className="v" dir="ltr">+{created.phone}</span></div>
-          <div className="kv"><span className="k">كلمة المرور</span><span className="v" dir="ltr">{created.password}</span></div>
+        <div className="card" style={{ background: 'var(--brand-soft)', border: '1.5px dashed var(--brand)', boxShadow: 'none' }}>
+          <div className="card-title"><Icon name="checkC" size={17} /> تم إنشاء الحساب — أرسل بيانات الدخول واتساب</div>
+          <div className="kv"><span className="k"><Icon name="user" size={14} /> الاسم</span><span className="v">{created.full_name}</span></div>
+          <div className="kv"><span className="k"><Icon name="phone" size={14} /> الهاتف (حسابه)</span><span className="v" dir="ltr">+{created.phone}</span></div>
+          <div className="kv"><span className="k"><Icon name="shield" size={14} /> كلمة السر</span><span className="v" dir="ltr">{created.password}</span></div>
+          <div className="kv"><span className="k"><Icon name="pin" size={14} /> رابط لوحته</span><span className="v" dir="ltr" style={{ fontSize: 11.5, wordBreak: 'break-all' }}>{dashboardUrl}</span></div>
           <div className="btn-row">
             <a
               className="btn"
@@ -218,7 +306,7 @@ function UsersTab() {
             >
               <Icon name="whatsapp" size={17} /> إرسال عبر واتساب
             </a>
-            <button className="btn outline" onClick={() => navigator.clipboard?.writeText(waText)}>
+            <button className="btn outline" onClick={() => { navigator.clipboard?.writeText(waText); setOk('تم نسخ الرسالة') }}>
               <Icon name="copy" size={15} /> نسخ الرسالة
             </button>
           </div>
@@ -236,7 +324,7 @@ function UsersTab() {
             <input className="input" dir="ltr" value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} placeholder="9639XXXXXXXX" />
           </div>
           <div className="hint" style={{ marginTop: -8, marginBottom: 10 }}>
-            ستولد المنصة كلمة مرور عشوائية، وترسل لك البطاقة أعلاه لإرسالها له عبر واتساب مباشرة.
+            ستولد المنصة كلمة السر تلقائياً وتمنحك بطاقة فيها رابط لوحته وحسابه وكلمة السر لإرسالها له عبر واتساب — وسيصبح قادراً على إدارة ملاعبه وحجوزاته وبطولاته بالكامل.
           </div>
           <button className="btn block" onClick={() => createOwner.mutate()} disabled={createOwner.isPending || !form.name || !form.phone}>
             <Icon name="user" size={16} /> {createOwner.isPending ? 'جارٍ الإنشاء…' : 'إنشاء الحساب'}
@@ -244,32 +332,167 @@ function UsersTab() {
         </div>
       )}
 
-      {profiles.isLoading ? <Spinner /> : (
-        profiles.data.map((p) => (
+      <div style={{ position: 'relative', marginBottom: 10 }}>
+        <input className="input" style={{ paddingInlineStart: 40 }} placeholder="ابحث بالاسم أو الصلاحية…" value={search} onChange={(e) => setSearch(e.target.value)} />
+        <Icon name="search" size={16} style={{ position: 'absolute', top: 13, insetInlineStart: 13, color: 'var(--text-3)' }} />
+      </div>
+
+      {profiles.isLoading ? <Spinner /> : filtered.length === 0 ? <Empty icon="users" text="لا نتائج" /> : (
+        filtered.map((p) => (
           <div key={p.id} className="card" style={{ padding: 13 }}>
             <div className="row between">
-              <div>
-                <b style={{ fontSize: 14 }}>{p.full_name || 'بدون اسم'}</b>
-                <div className="tiny">{p.role === 'admin' ? '🛡️ مدير' : p.role === 'venue_owner' ? '🏟️ صاحب ملعب' : '⚽ لاعب'}</div>
+              <div className="row">
+                <div className="avatar" style={{ width: 38, height: 38, fontSize: 14 }}>
+                  {p.avatar_url ? <img src={p.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (p.full_name || '؟').charAt(0)}
+                </div>
+                <div>
+                  <b style={{ fontSize: 13.5 }}>{p.full_name || 'بدون اسم'}</b>
+                  <div className="tiny">{p.role === 'admin' ? '🛡️ مدير' : p.role === 'venue_owner' ? '🏟️ صاحب ملعب' : '⚽ لاعب'} • انضم {dateAr(p.created_at?.slice(0, 10))}</div>
+                </div>
               </div>
               <div className="row">
                 {p.is_premium && <span className="badge gold">★ Premium</span>}
                 <span className={`badge ${p.role === 'admin' ? 'dark' : 'neutral'}`}>{p.role}</span>
               </div>
             </div>
-            <div className="btn-row">
-              <button className="btn sm outline" onClick={() => setUser.mutate({ uid: p.id, patch: { is_premium: !p.is_premium } })}>
-                {p.is_premium ? 'إلغاء Premium' : 'تفعيل Premium'}
+            {p.role !== 'admin' && (
+              <div className="btn-row">
+                <button className="btn sm outline" onClick={() => setUser.mutate({ uid: p.id, patch: { is_premium: !p.is_premium } })}>
+                  <Icon name="star" size={12} /> {p.is_premium ? 'إلغاء Premium' : 'تفعيل Premium'}
+                </button>
+                <button className="btn sm secondary" onClick={() => setUser.mutate({ uid: p.id, patch: { role: p.role === 'venue_owner' ? 'player' : 'venue_owner' } })}>
+                  {p.role === 'venue_owner' ? 'تحويله لاعباً' : 'ترقيته صاحب ملعب'}
+                </button>
+              </div>
+            )}
+          </div>
+        ))
+      )}
+    </>
+  )
+}
+
+/* ---------------- الملاعب ---------------- */
+function VenuesTab() {
+  const [err, setErr] = useState('')
+  const [search, setSearch] = useState('')
+
+  const venues = useQuery({
+    queryKey: ['admin-venues'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('venues')
+        .select('*, village:villages(name), owner:profiles(full_name)')
+        .order('created_at', { ascending: false })
+      if (error) throw error
+      return data
+    },
+  })
+
+  const toggle = useMutation({
+    mutationFn: async ({ id, is_active }) => {
+      const { error } = await supabase.from('venues').update({ is_active: !is_active }).eq('id', id)
+      if (error) throw new Error(error.message)
+    },
+    onSuccess: () => venues.refetch(),
+    onError: (e) => setErr(e.message),
+  })
+
+  const filtered = (venues.data || []).filter((v) => !search || (v.name || '').includes(search) || (v.owner?.full_name || '').includes(search))
+
+  return (
+    <>
+      <ErrorBox>{err}</ErrorBox>
+      <div style={{ position: 'relative', marginBottom: 10 }}>
+        <input className="input" style={{ paddingInlineStart: 40 }} placeholder="ابحث عن ملعب أو صاحبه…" value={search} onChange={(e) => setSearch(e.target.value)} />
+        <Icon name="search" size={16} style={{ position: 'absolute', top: 13, insetInlineStart: 13, color: 'var(--text-3)' }} />
+      </div>
+      {venues.isLoading ? <Spinner /> : filtered.length === 0 ? <Empty icon="building" text="لا ملاعب بعد" /> : (
+        filtered.map((v) => (
+          <div key={v.id} className="card" style={{ padding: 13 }}>
+            <div className="row between">
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <b style={{ fontSize: 14 }}>{v.name}</b>
+                <div className="tiny"><Icon name="pin" size={11} /> {v.village?.name} • 👤 {v.owner?.full_name || '—'}</div>
+                <div className="tiny">💵 {sypText(v.price_per_hour)}/ساعة • ⭐ {v.rating || '—'}</div>
+              </div>
+              <button
+                className={`btn sm ${v.is_active ? 'danger' : 'success'}`}
+                onClick={() => { if (confirm(v.is_active ? 'إيقاف هذا الملعب عن العمل؟' : 'إعادة تفعيل الملعب؟')) toggle.mutate({ id: v.id, is_active: v.is_active }) }}
+              >
+                {v.is_active ? 'إيقاف' : 'تفعيل'}
               </button>
-              {p.role !== 'admin' && (
-                <>
-                  <button className="btn sm secondary" onClick={() => setUser.mutate({ uid: p.id, patch: { role: 'venue_owner' } })}>جعله صاحب ملعب</button>
-                  <button className="btn sm secondary" onClick={() => setUser.mutate({ uid: p.id, patch: { role: 'player' } })}>جعله لاعباً</button>
-                </>
-              )}
             </div>
           </div>
         ))
+      )}
+    </>
+  )
+}
+
+/* ---------------- القرى ---------------- */
+function VillagesTab() {
+  const [err, setErr] = useState('')
+  const [ok, setOk] = useState('')
+  const [name, setName] = useState('')
+
+  const villages = useQuery({
+    queryKey: ['admin-villages'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('villages').select('*').order('name')
+      if (error) throw error
+      return data
+    },
+  })
+
+  const add = useMutation({
+    mutationFn: async () => {
+      if (!name.trim()) throw new Error('أدخل اسم القرية')
+      const { error } = await supabase.from('villages').insert({ name: name.trim(), is_active: true })
+      if (error) throw new Error(error.message)
+    },
+    onSuccess: () => { setName(''); setOk('أُضيفت القرية'); villages.refetch() },
+    onError: (e) => setErr(e.message),
+  })
+
+  const toggle = useMutation({
+    mutationFn: async ({ id, is_active }) => {
+      const { error } = await supabase.from('villages').update({ is_active: !is_active }).eq('id', id)
+      if (error) throw new Error(error.message)
+    },
+    onSuccess: () => villages.refetch(),
+    onError: (e) => setErr(e.message),
+  })
+
+  return (
+    <>
+      <ErrorBox>{err}</ErrorBox>
+      <OkBox>{ok}</OkBox>
+      <div className="card">
+        <div className="field mb0">
+          <label><Icon name="plus" size={14} /> إضافة قرية جديدة</label>
+          <div className="row">
+            <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="اسم القرية أو البلدة" />
+            <button className="btn" onClick={() => add.mutate()} disabled={add.isPending}>إضافة</button>
+          </div>
+          <div className="hint">القرى غير النشطة تختفي من قوائم الاختيار لدى المستخدمين.</div>
+        </div>
+      </div>
+      {villages.isLoading ? <Spinner /> : (
+        <div className="card">
+          {villages.data.map((v) => (
+            <div key={v.id} className="list-item">
+              <div className="n-ic" style={{ width: 34, height: 34, borderRadius: 10, background: 'var(--brand-soft)', color: 'var(--brand-strong)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Icon name="pin" size={16} />
+              </div>
+              <b style={{ flex: 1, fontSize: 14 }}>{v.name}</b>
+              <span className={`badge ${v.is_active ? 'success' : 'danger'}`}>{v.is_active ? 'نشطة' : 'موقوفة'}</span>
+              <button className="btn sm outline" onClick={() => toggle.mutate({ id: v.id, is_active: v.is_active })}>
+                {v.is_active ? 'إيقاف' : 'تفعيل'}
+              </button>
+            </div>
+          ))}
+        </div>
       )}
     </>
   )

@@ -85,17 +85,17 @@ export default function AuthPage() {
               <div style={{ position: 'relative' }}>
                 <input
                   className="input"
-                  type="tel"
+                  type="text"
                   inputMode="tel"
                   dir="ltr"
                   style={{ paddingInlineStart: 40 }}
                   value={form.phone}
                   onChange={set('phone')}
-                  placeholder="09xxxxxxxx"
+                  placeholder={mode === 'login' ? '09xxxxxxxx / email' : '09xxxxxxxx'}
                 />
                 <Icon name="phone" size={17} style={{ position: 'absolute', top: 13, insetInlineStart: 13, color: 'var(--text-3)' }} />
               </div>
-              <div className="hint">يُستخدم رقم الهاتف لتسجيل الدخول — لا حاجة إلى بريد إلكتروني</div>
+              <div className="hint">رقم الهاتف أو البريد الإلكتروني (لإدارة المنصة)</div>
             </div>
 
             <div className="field">

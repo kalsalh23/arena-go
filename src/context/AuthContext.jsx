@@ -49,13 +49,19 @@ export function AuthProvider({ children }) {
   }, [loadProfile])
 
   const signIn = useCallback(async ({ phone: rawPhone, password }) => {
-    const phone = normalizePhone(rawPhone)
-    if (!isValidPhone(phone)) throw new Error('صيغة رقم الهاتف غير صحيحة (مثال: 09xxxxxxxx)')
-    if (!password) throw new Error('أدخل كلمة المرور')
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: phoneToEmail(phone),
-      password,
-    })
+    // Email login (e.g. the system admin) or phone login
+    const identifier = String(rawPhone || '').trim()
+    let email
+    if (identifier.includes('@')) {
+      email = identifier.toLowerCase()
+      if (!password) throw new Error('أدخل كلمة المرور')
+    } else {
+      const phone = normalizePhone(identifier)
+      if (!isValidPhone(phone)) throw new Error('صيغة رقم الهاتف غير صحيحة (مثال: 09xxxxxxxx)')
+      if (!password) throw new Error('أدخل كلمة المرور')
+      email = phoneToEmail(phone)
+    }
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) throw new Error(translateAuthError(error.message))
     await loadProfile(data.user?.id)
     return data
